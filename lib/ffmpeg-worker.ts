@@ -1,7 +1,10 @@
-import ffmpeg from 'fluent-ffmpeg';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { supabaseServer } from './supabase';
+
+const execAsync = promisify(exec);
 
 const PROCESSING_DIR = process.env.PROCESSING_DIR || '/tmp/cinematic';
 
@@ -13,65 +16,66 @@ if (!fs.existsSync(PROCESSING_DIR)) {
 export async function processVideo(
   videoId: string,
   inputPath: string,
-  gradePreset: string = 'cinema-log-to-rec709'
+  gradePreset: string = 'social'
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  try {
     const outputFilename = `${videoId}-${gradePreset}.mp4`;
     const outputPath = path.join(PROCESSING_DIR, outputFilename);
 
-    const command = ffmpeg(inputPath)
-      .outputOptions([
-        '-c:v libx264',
-        '-preset medium',
-        '-crf 18',
-        '-c:a aac',
-        '-b:a 192k',
-      ]);
-
-    // Apply grade preset via FFmpeg filters
+    // Get FFmpeg filter chain for the preset
     const filterChain = getFilterChain(gradePreset);
-    if (filterChain) {
-      command.videoFilters(filterChain);
+
+    // Build FFmpeg command
+    const ffmpegCmd = `ffmpeg -i "${inputPath}" -vf "${filterChain}" -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 192k "${outputPath}"`;
+
+    console.log('Running FFmpeg:', ffmpegCmd);
+
+    // Execute FFmpeg
+    const { stdout, stderr } = await execAsync(ffmpegCmd, {
+      timeout: 600000, // 10 minutes
+      maxBuffer: 10 * 1024 * 1024, // 10MB
+    });
+
+    console.log('FFmpeg output:', stdout);
+    if (stderr) console.log('FFmpeg stderr:', stderr);
+
+    // Verify output exists
+    if (!fs.existsSync(outputPath)) {
+      throw new Error('FFmpeg did not produce output file');
     }
 
-    command
-      .output(outputPath)
-      .on('start', (cmd) => {
-        console.log('FFmpeg processing started:', cmd);
-      })
-      .on('progress', (progress: any) => {
-        console.log(`Processing: ${Math.round(progress.percent || 0)}%`);
-      })
-      .on('end', async () => {
-        console.log('FFmpeg processing completed');
+    console.log('Video processed successfully');
 
-        // Upload to Supabase
-        try {
-          const fileBuffer = fs.readFileSync(outputPath);
-          const supabase = supabaseServer();
+    // Upload to Supabase
+    try {
+      const fileBuffer = fs.readFileSync(outputPath);
+      const supabase = supabaseServer();
 
-          const { error: uploadError } = await supabase.storage
-            .from('processed')
-            .upload(outputFilename, fileBuffer, {
-              contentType: 'video/mp4',
-              upsert: false,
-            });
+      const { error: uploadError } = await supabase.storage
+        .from('processed')
+        .upload(outputFilename, fileBuffer, {
+          contentType: 'video/mp4',
+          upsert: false,
+        });
 
-          if (uploadError) throw uploadError;
+      if (uploadError) throw uploadError;
 
-          // Clean up local file
-          fs.unlinkSync(outputPath);
+      console.log('Uploaded to Supabase:', outputFilename);
 
-          resolve(outputFilename);
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (err) => {
-        reject(err);
-      })
-      .run();
-  });
+      // Clean up local file
+      if (fs.existsSync(outputPath)) {
+        fs.unlinkSync(outputPath);
+      }
+
+      return outputFilename;
+    } catch (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+  } catch (error) {
+    console.error('Processing error:', error);
+    throw error;
+  }
 }
 
 function getFilterChain(preset: string): string {
@@ -79,7 +83,7 @@ function getFilterChain(preset: string): string {
     // Base levels
     'clean': 'eq=contrast=1.06:saturation=1.05:brightness=0.02',
     'social': 'eq=contrast=1.08:saturation=1.16:brightness=0.03',
-    
+
     // Cinematic levels
     'teal': 'colorbalance=rs=0.1:bs=-0.1:rm=-0.1:bm=0.1,eq=saturation=1.2:contrast=1.1',
     'kodak': 'eq=saturation=1.10:contrast=1.10:brightness=0.02,colorbalance=rs=0.08:bs=-0.05',
