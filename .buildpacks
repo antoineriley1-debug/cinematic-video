@@ -1,0 +1,3 @@
+https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
+https://buildpacks.io/packages/apt
+https://github.com/heroku/heroku-buildpack-nodejs.git
