@@ -1,7 +1,7 @@
-FROM node:20-alpine
+FROM node:20
 
-# Install FFmpeg
-RUN apk add --no-cache ffmpeg
+# Install FFmpeg and build essentials
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Copy app
 COPY . .
@@ -18,8 +18,5 @@ COPY . .
 RUN npm run build
 
 EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
 
 CMD ["npm", "start"]
