@@ -49,7 +49,7 @@ const C = {
 };
 
 export function CineStudio() {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string>("");
   const [fileName, setFileName] = useState("");
   const [dragging, setDragging] = useState(false);
   const [level, setLevel] = useState(2);
@@ -216,7 +216,7 @@ export function CineStudio() {
           {/* ============ PREVIEW ============ */}
           <section className="fade-up">
             <div style={{ borderRadius: 18, overflow: "hidden", border: `1px solid ${C.line}`, background: "#000", position: "relative", aspectRatio: "16/9" }}>
-              {!videoUrl ? (
+              {!videoUrl || videoUrl.length === 0 ? (
                 <div
                   onDragOver={e => { e.preventDefault(); setDragging(true); }}
                   onDragLeave={() => setDragging(false)}

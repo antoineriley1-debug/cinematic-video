@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Convert blob to file path (save temporarily)
     const tmpPath = path.join('/tmp', `${videoId}-input.mp4`);
-    fs.writeFileSync(tmpPath, await fileData.arrayBuffer());
+    fs.writeFileSync(tmpPath, Buffer.from(await fileData.arrayBuffer()));
 
     // Process video with FFmpeg
     const processedFilename = await processVideo(

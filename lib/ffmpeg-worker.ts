@@ -39,8 +39,8 @@ export async function processVideo(
       .on('start', (cmd) => {
         console.log('FFmpeg processing started:', cmd);
       })
-      .on('progress', (progress) => {
-        console.log(`Processing: ${Math.round(progress.percent)}%`);
+      .on('progress', (progress: any) => {
+        console.log(`Processing: ${Math.round(progress.percent || 0)}%`);
       })
       .on('end', async () => {
         console.log('FFmpeg processing completed');
