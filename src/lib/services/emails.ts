@@ -96,7 +96,6 @@ export async function ingestEmail(
     summary: `Email analyzed: ${parsed.subject || "(no subject)"}`,
     entityType: "EMAIL",
     entityId: email.id,
-    occurredAt: parsed.sentAt ?? undefined,
   });
 
   return { emailId: email.id, duplicate: false, mode: analysis.mode, pendingSuggestions: pending };

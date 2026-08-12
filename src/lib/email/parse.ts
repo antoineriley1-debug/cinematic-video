@@ -13,9 +13,17 @@ export type ParsedEmail = {
 };
 
 function decodeQuotedPrintable(input: string): string {
-  return input
-    .replace(/=\r?\n/g, "")
-    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  const unfolded = input.replace(/=\r?\n/g, "");
+  const bytes: number[] = [];
+  for (let i = 0; i < unfolded.length; i++) {
+    if (unfolded[i] === "=" && /^[0-9A-Fa-f]{2}$/.test(unfolded.slice(i + 1, i + 3))) {
+      bytes.push(parseInt(unfolded.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      bytes.push(unfolded.charCodeAt(i));
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
 }
 
 function decodeRfc2047(input: string): string {
