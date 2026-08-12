@@ -6,6 +6,9 @@ import { MockProvider } from "@/lib/ai/providers/mock";
 import { db } from "./helpers";
 
 const realFetch = globalThis.fetch;
+// Prisma auto-loads .env, which may carry a real GEMINI_API_KEY into the
+// test process — every test here sets the variable it needs explicitly.
+delete process.env.GEMINI_API_KEY;
 afterEach(() => {
   globalThis.fetch = realFetch;
   delete process.env.GEMINI_API_KEY;
@@ -70,13 +73,13 @@ describe("Google Gemini provider adapter", () => {
     );
   });
 
-  it("health probe: ok and 429 are healthy; 400/403 are not", async () => {
+  it("health probe: only a successful generation counts (Google reports depleted credits as 429)", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     const provider = new GoogleProvider();
-    stubFetch({ status: 200, body: { models: [] } });
+    stubFetch({ status: 200, body: { candidates: [{ content: { parts: [{ text: "ok" }] } }] } });
     expect(await provider.healthy()).toBe(true);
-    stubFetch({ status: 429, body: {} });
-    expect(await provider.healthy()).toBe(true);
+    stubFetch({ status: 429, body: { error: { status: "RESOURCE_EXHAUSTED" } } });
+    expect(await provider.healthy()).toBe(false);
     stubFetch({ status: 403, body: {} });
     expect(await provider.healthy()).toBe(false);
   });

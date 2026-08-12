@@ -13,11 +13,24 @@ export class GoogleProvider implements AiProvider {
   async healthy(): Promise<boolean> {
     if (!this.configured()) return false;
     try {
+      // Probe with a minimal real completion: the models list returns 200
+      // even when the project has no credits, and Google reports depleted
+      // credits as 429, so only an actual successful generation proves the
+      // provider is usable.
+      const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${process.env.GEMINI_API_KEY}`,
-        { signal: AbortSignal.timeout(8000) },
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: "ping" }] }],
+            generationConfig: { maxOutputTokens: 1 },
+          }),
+          signal: AbortSignal.timeout(8000),
+        },
       );
-      return res.ok || res.status === 429;
+      return res.ok;
     } catch {
       return false;
     }
@@ -26,7 +39,7 @@ export class GoogleProvider implements AiProvider {
   async complete(req: AiRequest): Promise<AiResponse> {
     if (!this.configured()) throw new ProviderUnavailableError(this.name, "not configured");
     try {
-      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
         {

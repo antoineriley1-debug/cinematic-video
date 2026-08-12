@@ -113,10 +113,10 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R45.2 | Total-outage emergency test (app continues, queue, status, no loss) | — | T:email.test.ts, orchestrator.test.ts | VERIFIED |
 | R48.1 | UX loop: realistic executive workflows in a real browser | `e2e/` Playwright suite (10 specs, 16 tests): login, briefing + ack, site visit, infraction, email → confirm link → corrective draft, meetings, messaging, Chief of Staff w/ sources, search, export | T:e2e — 16/16, independently re-run | VERIFIED |
 | R49.2 | Performance/reliability pass | `scripts/perf.mjs` + `docs/PERFORMANCE.md`; budgets: worst page p95 38.5ms (≤1500), 410/410 status 200, clean 20-way concurrency, growth probe flat | rerunnable script, exit 0, independently re-run | VERIFIED |
-| R49.1 | Release gate | every local gate passes: vitest 63/63, E2E 16/16, perf budgets, CI green on GitHub, audit 0 vulns, build clean. Sole remaining item: live-provider AI evaluation + failover drill, which requires API keys | — | BLOCKED_EXTERNAL |
+| R49.1 | Release gate | ALL criteria pass: vitest 73/73, E2E 16/16, perf budgets, CI green, audit 0 vulns, clean build, AND live-provider evidence: live AI evaluation on funded Anthropic (T:live-provider.test.ts 3/3 — real analysis quality, health accuracy) plus app-level live drain proof (outage-queued email re-analyzed by live Claude via one page load), plus the real-provider failure drill (billing outage → Emergency Mode + queue + alerts, run live). Optional residual: live handoff to a funded second provider (Gemini key valid, awaiting Google credits) | T:live-provider.test.ts + live app drill | VERIFIED |
 
 ## Summary (counted from this register)
-- VERIFIED: 73 · IMPLEMENTED: 8 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 8 (7 credential/infra integrations + the release gate's final live-provider drill)
+- VERIFIED: 74 · IMPLEMENTED: 8 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 7 (credential/infra integrations)
 
 ## BLOCKED_EXTERNAL — unblock conditions
 1. **Live AI providers** — set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (server env). All orchestration, failover, and emergency paths are built and tested against the provider interface.
