@@ -48,6 +48,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     <div className="space-y-6">
       <PageHeader
         title={site.name}
+        help="site-visit"
         subtitle={`${site.code}${site.location ? ` · ${site.location}` : ""} · Executives: ${site.assignments.map((a) => a.user.name).join(", ") || "unassigned"}`}
         action={
           <div className="flex gap-2">

@@ -44,13 +44,28 @@ Every material mutation writes `AuditLog` (actor, action, entity, before/
 after snapshots, source). Logins, exports, setting changes, link
 confirmations, infractions, and file entries are all audited.
 
-## Known gaps (tracked in REQUIREMENTS_TRACEABILITY.md — release blockers)
-- **Rate limiting** (R42.7): not implemented; add a middleware limiter or
-  platform-level WAF before production.
-- **Dependency scanning** (R42.8): wire `npm audit` / Dependabot into CI.
+## Rate limiting & login throttling
+- **Application-layer limiter** (`src/lib/ratelimit.ts`): sliding window in
+  the Node process — login server action per-IP (15/min) and API routes
+  per-user (240/min, live-verified 429). Important: the Next 16
+  proxy/middleware sandbox does NOT retain module or global state between
+  requests, so limits must live in the app layer, not `proxy.ts`.
+- **Durable login throttle** (`src/lib/loginThrottle.ts`): failed attempts
+  recorded as LOGIN_FAILED audit rows per email; configurable
+  `security.loginMaxFailures` / `security.loginWindowMinutes` settings block
+  further attempts inside the window. Survives restarts.
+- **Multi-instance note**: the in-memory limiter is per-process. Scaling to
+  multiple instances requires a shared store (Redis) or platform WAF.
+
+## Dependency scanning
+`.github/workflows/ci.yml` runs `npm audit --audit-level=high` on every
+push/PR after tests and the production build. The first audit surfaced real
+high-severity advisories in Next 16.2.6 (middleware bypass, SSRF, cache
+confusion); the framework was upgraded to 16.3.0 → 0 known vulnerabilities.
+
+## Known gaps (tracked in REQUIREMENTS_TRACEABILITY.md)
 - **CSRF**: Next server actions carry origin checks by default; keep forms on
   same-origin only (no cross-site POST surface today).
 - **Encryption at rest / TLS**: production platform responsibility
   (DEPLOYMENT.md); SQLite dev file is not encrypted.
-- **Login throttling**: constant-time comparison exists, but add attempt
-  limits alongside rate limiting.
+- **Shared rate-limit store** for multi-instance deployments (see above).

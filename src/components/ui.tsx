@@ -15,12 +15,17 @@ export function Card({ title, children, action }: { title?: string; children: Re
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export function PageHeader({ title, subtitle, action, help }: { title: string; subtitle?: string; action?: ReactNode; help?: string }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        {help && (
+          <Link href={`/training#${help}`} className="mt-1 inline-block text-xs font-medium text-blue-600 hover:underline">
+            How do I use this? →
+          </Link>
+        )}
       </div>
       {action}
     </div>

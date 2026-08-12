@@ -28,6 +28,7 @@ export default async function EmailPage({ params }: { params: Promise<{ id: stri
   const email = await prisma.emailMessage.findUnique({ where: { id }, include: { drafts: { orderBy: { createdAt: "desc" } } } });
   if (!email) notFound();
 
+  const attachments = await prisma.storedFile.findMany({ where: { entityType: "EMAIL", entityId: id } });
   const allLinks = await linksFor(prisma, { type: "EMAIL", id });
   const pending = allLinks.filter((l) => !l.link.confirmed);
   const confirmed = allLinks.filter((l) => l.link.confirmed);
@@ -45,6 +46,7 @@ export default async function EmailPage({ params }: { params: Promise<{ id: stri
     <div className="space-y-6">
       <PageHeader
         title={email.subject ?? "(no subject)"}
+        help="corrective-email"
         subtitle={`From ${email.fromName || email.fromAddress || "unknown"} · ${fmtDateTime(email.sentAt ?? email.createdAt)}${to.length ? ` · to ${to.join(", ")}` : ""}`}
         action={
           <div className="flex items-center gap-2">
@@ -128,6 +130,17 @@ export default async function EmailPage({ params }: { params: Promise<{ id: stri
         </Card>
 
         <Card title="Original email (preserved verbatim)">
+          {attachments.length > 0 && (
+            <ul className="mb-3 flex flex-wrap gap-2">
+              {attachments.map((f) => (
+                <li key={f.id}>
+                  <a href={`/api/files/${f.id}`} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-blue-700 hover:bg-slate-100">
+                    📎 {f.filename} ({Math.ceil(f.size / 1024)} KB)
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
           <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
             {email.bodyText || email.rawSource}
           </pre>

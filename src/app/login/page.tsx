@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { login, currentUser } from "@/lib/auth";
+import { isRateLimited, LIMITS } from "@/lib/ratelimit";
 import { btnCls, inputCls } from "@/components/ui";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -9,6 +11,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   async function doLogin(formData: FormData) {
     "use server";
+    const headerStore = await headers();
+    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "local";
+    if (isRateLimited(`login:${ip}`, LIMITS.login)) redirect("/login?error=rate");
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const result = await login(email, password);
@@ -25,7 +30,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="mt-2 text-sm text-slate-500">Connected executive operations &amp; intelligence</p>
         </div>
         {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">Invalid email or password.</p>
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error === "rate" ? "Too many attempts. Wait a minute and try again." : "Invalid email or password."}
+          </p>
         )}
         <form action={doLogin} className="space-y-4">
           <div>

@@ -36,6 +36,9 @@ export default async function BriefingPage() {
           <a href="/api/export/briefing" className="text-xs font-medium text-blue-600 hover:underline">
             Export briefing →
           </a>
+          <Link href="/training#daily-briefing" className="ml-3 text-xs font-medium text-blue-600 hover:underline">
+            How do I use this? →
+          </Link>
         </div>
       </div>
 

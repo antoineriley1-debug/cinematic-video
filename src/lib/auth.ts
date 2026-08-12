@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { audit } from "./audit";
+import { isLoginThrottled, recordFailedLogin } from "./loginThrottle";
 
 const SESSION_COOKIE = "ceos_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12h
@@ -50,11 +51,15 @@ export async function createSession(userId: string): Promise<void> {
 }
 
 export async function login(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  if (await isLoginThrottled(prisma, email)) {
+    return { ok: false, error: "Too many failed attempts. Try again later." };
+  }
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
   // Constant-shape comparison: always run bcrypt even for unknown users.
   const hash = user?.passwordHash ?? "$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinva";
   const ok = await bcrypt.compare(password, hash);
   if (!user || !user.active || !ok) {
+    await recordFailedLogin(prisma, email);
     return { ok: false, error: "Invalid email or password." };
   }
   await createSession(user.id);

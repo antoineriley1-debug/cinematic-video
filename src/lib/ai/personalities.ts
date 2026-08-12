@@ -176,12 +176,18 @@ export const PERSONALITY_PROFILES: Record<Personality, PersonalityProfile> = {
   },
 };
 
-export function draftPromptFor(personality: Personality, ctx: DraftContext, originalEmail: string): string {
+export function draftPromptFor(
+  personality: Personality,
+  ctx: DraftContext,
+  originalEmail: string,
+  rules?: string[],
+): string {
   const profile = PERSONALITY_PROFILES[personality];
+  const effectiveRules = rules && rules.length > 0 ? rules : profile.rules;
   return [
     `Draft a reply email in the "${profile.label}" executive communication style.`,
     `Rules for this style:`,
-    ...profile.rules.map((r) => `- ${r}`),
+    ...effectiveRules.map((r) => `- ${r}`),
     ``,
     `The reply is from ${ctx.senderName}${ctx.recipientName ? ` to ${ctx.recipientName}` : ""}.`,
     ctx.expectedAction ? `Expected action: ${ctx.expectedAction}` : "",

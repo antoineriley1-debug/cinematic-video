@@ -31,6 +31,32 @@ import { startVisit, addVisitObservation, completeVisit } from "@/lib/services/v
 import { getOrCreateDirectConversation, createGroupConversation, sendMessage, markRead } from "@/lib/services/messaging";
 import { askChief } from "@/lib/services/chief";
 import { draftEmailReply } from "@/lib/ai/capabilities";
+import { drainAiQueue } from "@/lib/services/aiQueue";
+import { storeFile } from "@/lib/storage";
+import { getSetting } from "@/lib/settings";
+
+async function storeUploads(
+  formData: FormData,
+  field: string,
+  ownerId: string,
+  entityType: string,
+  entityId: string,
+) {
+  const maxBytes = await getSetting(prisma, "uploads.maxBytes");
+  const files = formData.getAll(field).filter((f): f is File => f instanceof File && f.size > 0);
+  for (const file of files.slice(0, 10)) {
+    await storeFile(prisma, {
+      buffer: Buffer.from(await file.arrayBuffer()),
+      filename: file.name,
+      mimeType: file.type || "application/octet-stream",
+      ownerId,
+      entityType,
+      entityId,
+      maxBytes,
+    });
+  }
+  return files.length;
+}
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 const opt = (fd: FormData, key: string) => str(fd, key) || undefined;
@@ -341,6 +367,7 @@ export async function createNoteAction(formData: FormData) {
   if (linkType && linkId) {
     await link(prisma, { type: "NOTE", id: note.id }, { type: zEntityType.parse(linkType) as EntityType, id: linkId }, { createdById: user.id });
   }
+  await storeUploads(formData, "attachments", user.id, "NOTE", note.id);
   if (note.visibility === "PUBLIC") {
     await deliverMentions(prisma, { text: note.content, actorId: user.id, actorName: user.name, entityType: "NOTE", entityId: note.id, contextTitle: note.title ?? "on a public note" });
   }
@@ -364,9 +391,10 @@ export async function addCommentAction(formData: FormData) {
   const entityType = str(formData, "entityType");
   const entityId = str(formData, "entityId");
   const content = str(formData, "content");
-  await prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: { entityType, entityId, authorId: user.id, content, parentId: opt(formData, "parentId") ?? null },
   });
+  await storeUploads(formData, "attachments", user.id, "COMMENT", comment.id);
   await deliverMentions(prisma, { text: content, actorId: user.id, actorName: user.name, entityType, entityId, contextTitle: "in a discussion" });
   revalidatePath(str(formData, "path") || "/");
 }
@@ -559,5 +587,37 @@ export async function runHealthCheckAction() {
   await requireAdmin();
   const orchestrator = await getOrchestrator(prisma);
   await orchestrator.healthCheckAll();
+  // Providers may have just recovered — drain any outage-queued AI work.
+  if (orchestrator.aiAvailable()) {
+    await drainAiQueue(prisma, orchestrator);
+  }
   revalidatePath("/admin");
+}
+
+export async function processAiQueueAction() {
+  await requireAdmin();
+  const orchestrator = await getOrchestrator(prisma);
+  await drainAiQueue(prisma, orchestrator);
+  revalidatePath("/admin");
+}
+
+// ---------- Dashboard layout ----------
+
+export async function saveDashboardLayoutAction(formData: FormData) {
+  const user = await requireUser();
+  const order = str(formData, "order")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hidden = formData.getAll("hidden").map(String);
+  const existing = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  let prefs: Record<string, unknown> = {};
+  try {
+    prefs = JSON.parse(existing.preferencesJson ?? "{}");
+  } catch {
+    prefs = {};
+  }
+  prefs.dashboard = { order, hidden };
+  await prisma.user.update({ where: { id: user.id }, data: { preferencesJson: JSON.stringify(prefs) } });
+  revalidatePath("/dashboard");
 }

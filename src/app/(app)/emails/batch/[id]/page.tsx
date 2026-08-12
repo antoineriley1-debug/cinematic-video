@@ -18,6 +18,7 @@ export default async function EmailBatchPage({ params }: { params: Promise<{ id:
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title={batch.title ?? "Email Timeline"}
+        help="email-timeline"
         subtitle={`${timeline.length} emails, ordered chronologically — reconstruct what happened`}
         action={<a href={`/api/export/email-timeline/${batch.id}`} className={btnSecondaryCls}>Export chronology</a>}
       />

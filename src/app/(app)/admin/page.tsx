@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAllSettings } from "@/lib/settings";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, btnSecondaryCls, fmtDateTime } from "@/components/ui";
-import { updateSettingAction, runHealthCheckAction } from "../actions";
+import { updateSettingAction, runHealthCheckAction, processAiQueueAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +27,16 @@ export default async function AdminPage() {
       <Card
         title="AI Providers"
         action={
-          <form action={runHealthCheckAction}>
-            <button className={btnSecondaryCls}>Run health check</button>
-          </form>
+          <div className="flex gap-2">
+            <form action={runHealthCheckAction}>
+              <button className={btnSecondaryCls}>Run health check</button>
+            </form>
+            {queue.length > 0 && (
+              <form action={processAiQueueAction}>
+                <button className={btnSecondaryCls}>Process queued AI work ({queue.length})</button>
+              </form>
+            )}
+          </div>
         }
       >
         <table className="w-full text-left text-sm">

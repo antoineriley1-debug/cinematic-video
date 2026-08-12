@@ -25,6 +25,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Executive Activity Calendar"
+        help="reports"
         subtitle={`Reconstruct your last ${days} days. Every meaningful action in Crothall Executive OS lands here, and the AI Chief of Staff can use it as context.`}
         action={
           <div className="flex gap-2">

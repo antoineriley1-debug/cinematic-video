@@ -2,6 +2,12 @@
 // elsewhere; this module only extracts metadata and readable body text.
 // Also accepts plain pasted email text (Outlook-style headers) as a fallback.
 
+export type ParsedAttachment = {
+  filename: string;
+  mimeType: string;
+  content: Buffer;
+};
+
 export type ParsedEmail = {
   subject: string;
   fromAddress: string;
@@ -10,6 +16,7 @@ export type ParsedEmail = {
   cc: string[];
   sentAt: Date | null;
   bodyText: string;
+  attachments: ParsedAttachment[];
 };
 
 function decodeQuotedPrintable(input: string): string {
@@ -89,7 +96,19 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-type MimePart = { contentType: string; encoding: string; body: string };
+type MimePart = {
+  contentType: string;
+  encoding: string;
+  body: string;
+  disposition: string;
+  filename: string;
+};
+
+function partFilename(contentType: string, disposition: string): string {
+  const fromDisposition = disposition.match(/filename\*?="?([^";]+)"?/i)?.[1];
+  const fromType = contentType.match(/name="?([^";]+)"?/i)?.[1];
+  return decodeRfc2047(fromDisposition ?? fromType ?? "").trim();
+}
 
 function splitMultipart(body: string, boundary: string): string[] {
   return body
@@ -109,18 +128,44 @@ function collectParts(raw: string, contentType: string, encoding: string, depth 
       const partHeaders = unfoldHeaders(chunk);
       const partType = partHeaders.get("content-type") ?? "text/plain";
       const partEnc = partHeaders.get("content-transfer-encoding") ?? "7bit";
+      const partDisposition = partHeaders.get("content-disposition") ?? "";
       const partBodyStart = chunk.search(/\r?\n\r?\n/);
       const partBody = partBodyStart >= 0 ? chunk.slice(partBodyStart).trim() : "";
       if (partType.toLowerCase().startsWith("multipart/")) {
         parts.push(...collectParts(chunk, partType, partEnc, depth + 1));
       } else {
-        parts.push({ contentType: partType, encoding: partEnc, body: partBody });
+        parts.push({
+          contentType: partType,
+          encoding: partEnc,
+          body: partBody,
+          disposition: partDisposition,
+          filename: partFilename(partType, partDisposition),
+        });
       }
     }
     return parts;
   }
   const headerEnd = raw.search(/\r?\n\r?\n/);
-  return [{ contentType, encoding, body: headerEnd >= 0 ? raw.slice(headerEnd).trim() : "" }];
+  return [{
+    contentType,
+    encoding,
+    body: headerEnd >= 0 ? raw.slice(headerEnd).trim() : "",
+    disposition: "",
+    filename: "",
+  }];
+}
+
+function decodeAttachment(part: MimePart): Buffer {
+  const enc = part.encoding.toLowerCase();
+  if (enc === "base64") {
+    try {
+      return Buffer.from(part.body.replace(/\s+/g, ""), "base64");
+    } catch {
+      return Buffer.from(part.body);
+    }
+  }
+  if (enc === "quoted-printable") return Buffer.from(decodeQuotedPrintable(part.body), "utf8");
+  return Buffer.from(part.body, "utf8");
 }
 
 function decodeBody(part: MimePart): string {
@@ -151,9 +196,18 @@ export function parseEml(raw: string): ParsedEmail {
   const encoding = headers.get("content-transfer-encoding") ?? "7bit";
   const parts = collectParts(raw, contentType, encoding);
 
-  const plain = parts.find((p) => p.contentType.toLowerCase().includes("text/plain"));
-  const html = parts.find((p) => p.contentType.toLowerCase().includes("text/html"));
+  const isAttachment = (p: MimePart) =>
+    /attachment/i.test(p.disposition) || (Boolean(p.filename) && !/inline/i.test(p.disposition));
+  const bodyParts = parts.filter((p) => !isAttachment(p));
+  const plain = bodyParts.find((p) => p.contentType.toLowerCase().includes("text/plain"));
+  const html = bodyParts.find((p) => p.contentType.toLowerCase().includes("text/html"));
   const bodyText = plain ? decodeBody(plain).trim() : html ? stripHtml(decodeBody(html)) : "";
+
+  const attachments = parts.filter(isAttachment).map((p) => ({
+    filename: p.filename || "attachment",
+    mimeType: p.contentType.split(";")[0].trim() || "application/octet-stream",
+    content: decodeAttachment(p),
+  }));
 
   const dateRaw = headers.get("date");
   const sentAt = dateRaw ? new Date(dateRaw) : null;
@@ -166,6 +220,7 @@ export function parseEml(raw: string): ParsedEmail {
     cc: parseAddressList(headers.get("cc") ?? ""),
     sentAt: sentAt && !isNaN(sentAt.getTime()) ? sentAt : null,
     bodyText,
+    attachments,
   };
 }
 
@@ -189,5 +244,6 @@ export function parsePastedEmail(text: string): ParsedEmail {
     cc: get("Cc") ? parseAddressList(get("Cc")) : [],
     sentAt: sentAt && !isNaN(sentAt.getTime()) ? sentAt : null,
     bodyText: body,
+    attachments: [],
   };
 }

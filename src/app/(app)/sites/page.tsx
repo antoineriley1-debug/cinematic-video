@@ -15,7 +15,8 @@ export default async function SitesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Sites & Hospitals" subtitle={`${sites.length} sites under management`} />
+      <PageHeader title="Sites & Hospitals"
+        help="site-visit" subtitle={`${sites.length} sites under management`} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sites.map((s) => (
           <Link key={s.id} href={`/sites/${s.id}`} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow">

@@ -32,6 +32,11 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   ]);
   const commentAuthors = await prisma.user.findMany({ where: { id: { in: comments.map((c) => c.authorId) } } });
   const authorName = (aid: string) => commentAuthors.find((u) => u.id === aid)?.name ?? "Unknown";
+  const [noteFiles, commentFiles] = await Promise.all([
+    prisma.storedFile.findMany({ where: { entityType: "NOTE", entityId: id } }),
+    prisma.storedFile.findMany({ where: { entityType: "COMMENT", entityId: { in: comments.map((c) => c.id) } } }),
+  ]);
+  const filesFor = (commentId: string) => commentFiles.filter((f) => f.entityId === commentId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -55,6 +60,17 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
       <Card>
         <p className="whitespace-pre-wrap text-sm text-slate-800">{note.content}</p>
+        {noteFiles.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+            {noteFiles.map((f) => (
+              <li key={f.id}>
+                <a href={`/api/files/${f.id}`} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-blue-700 hover:bg-slate-100">
+                  📎 {f.filename} ({Math.ceil(f.size / 1024)} KB)
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card title="My private flags (visible only to me)">
@@ -135,12 +151,18 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                   <span className="font-medium text-slate-900">{authorName(c.authorId)}</span>
                   <span className="ml-2 text-xs text-slate-400">{fmtDate(c.createdAt)}</span>
                   <p className="text-slate-700">{c.content}</p>
+                  {filesFor(c.id).map((f) => (
+                    <a key={f.id} href={`/api/files/${f.id}`} className="mr-2 text-xs text-blue-700 hover:underline">📎 {f.filename}</a>
+                  ))}
                   <ul className="ml-6 mt-2 space-y-2 border-l-2 border-slate-100 pl-3">
                     {comments.filter((r) => r.parentId === c.id).map((r) => (
                       <li key={r.id}>
                         <span className="font-medium text-slate-900">{authorName(r.authorId)}</span>
                         <span className="ml-2 text-xs text-slate-400">{fmtDate(r.createdAt)}</span>
                         <p className="text-slate-700">{r.content}</p>
+                        {filesFor(r.id).map((f) => (
+                          <a key={f.id} href={`/api/files/${f.id}`} className="mr-2 text-xs text-blue-700 hover:underline">📎 {f.filename}</a>
+                        ))}
                       </li>
                     ))}
                   </ul>
@@ -155,12 +177,15 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                 </li>
               ))}
             </ul>
-            <form action={addCommentAction} className="mt-4 flex gap-2">
+            <form action={addCommentAction} className="mt-4 space-y-2">
               <input type="hidden" name="entityType" value="NOTE" />
               <input type="hidden" name="entityId" value={note.id} />
               <input type="hidden" name="path" value={`/notes/${note.id}`} />
-              <input name="content" placeholder="Comment — @Name directs attention" required className={inputCls} />
-              <button className={btnCls}>Post</button>
+              <div className="flex gap-2">
+                <input name="content" placeholder="Comment — @Name directs attention" required className={inputCls} />
+                <button className={btnCls}>Post</button>
+              </div>
+              <input name="attachments" type="file" multiple className="text-xs text-slate-500" />
             </form>
           </Card>
         </>

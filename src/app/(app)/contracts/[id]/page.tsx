@@ -42,6 +42,8 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
       <PageHeader
         title={contract.title}
         subtitle={`${contract.vendor ? contract.vendor.name + " · " : ""}${contract.sites.map((s) => s.site.name).join(", ") || "no sites"} · ${contract.status}${contract.autoRenews ? " · auto-renews" : ""}`}
+        help="contract-search"
+        action={<a href={`/api/export/contract/${contract.id}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Export report</a>}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

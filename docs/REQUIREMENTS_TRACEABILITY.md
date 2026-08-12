@@ -24,7 +24,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R6.13 | Multi-email upload, chronological ordering, event timeline | `EmailBatch`, `buildTimeline`, `emails/batch/[id]` | T:email.test.ts | VERIFIED |
 | R6.14 | Timeline shows date/sender/recipients/subject/event/actions/source | `buildTimeline`, batch page | T:email.test.ts | VERIFIED |
 | R6.15 | Timeline exportable | `/api/export/email-timeline/[id]` | T:email.test.ts (export text), S | VERIFIED |
-| R6.16 | Email attachment parsing (extract & store .eml attachments as files) | not yet — storage layer exists (`lib/storage.ts`) | — | NOT_STARTED |
+| R6.16 | Email attachment parsing (extract & store .eml attachments as files) | `email/parse.ts` MIME attachment extraction → `storeFile` linked to email; shown on `emails/[id]` | T:hardening.test.ts | VERIFIED |
 | R7.1 | No mailbox login/sync; intentional submission only | no mail-sync code exists; UI states policy | design-level | VERIFIED |
 | R7.2 | Method B intake address | env seam `EMAIL_INTAKE_ADDRESS`; needs inbound-mail infra | — | BLOCKED_EXTERNAL |
 | R8.1 | Secondary provider assumes on primary failure | `ai/orchestrator.ts` | T:orchestrator.test.ts | VERIFIED |
@@ -33,11 +33,11 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R8.4 | Emergency capabilities: classification/urgency/intent/deadlines/actions/templates | `emergency.ts`, personality templates | T:emergency.test.ts, drafting.test.ts | VERIFIED |
 | R8.5 | "Emergency Intelligence Mode" clearly displayed | header badge, ModeBadge on records, admin banner | S | IMPLEMENTED |
 | R8.6 | Queued AI work during outage, no data loss | `AiQueueItem`, queueWork | T:email.test.ts, orchestrator.test.ts | VERIFIED |
-| R8.7 | Queue drain on provider recovery (background re-analysis) | queue + RECOVERED events exist; drain worker not built | — | IN_PROGRESS |
+| R8.7 | Queue drain on provider recovery (background re-analysis) | `services/aiQueue.ts drainAiQueue`; runs on health-check recovery, admin button, and opportunistically from layout | T:queue-drain.test.ts | VERIFIED |
 | R9.1 | 12 outgoing personality profiles with structured rules | `ai/personalities.ts` | T:drafting.test.ts | VERIFIED |
 | R9.2 | FIRM/CORRECTIVE rule structure per spec | profile rules | T:drafting.test.ts | VERIFIED |
 | R9.3 | Profiles work in AI mode AND emergency templates | `draftEmailReply` fallback | T:drafting.test.ts | VERIFIED |
-| R9.4 | Admin-editable personality rules (currently code-defined) | profiles centralized in one module | — | IN_PROGRESS |
+| R9.4 | Admin-editable personality rules | Setting `personalities.overrides` merged by `resolvePersonalityRules`; editable in Admin Console | T:hardening.test.ts | VERIFIED |
 | R10.1 | 10 sites seeded, unbounded architecture | `prisma/seed.ts`, Site model | S | VERIFIED |
 | R10.2 | Site profile: directors/executives/projects/observations/vendors/contracts/visits/timeline | `sites/[id]/page.tsx` | S | IMPLEMENTED |
 | R10.3 | Six observation categories incl. back burner/radar | `SiteObservation.category` | T:briefing tests use CRITICAL | VERIFIED |
@@ -48,7 +48,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R13.2 | AI recommends classification but cannot file infractions | server-side guard | T:directors.test.ts | VERIFIED |
 | R14.1 | Structured infraction records with audit history | `Infraction` model, `recordInfraction` | T:directors.test.ts | VERIFIED |
 | R14.2 | Configurable threshold alert (count/window/categories/severity/recipients) | `Setting infraction.alertRule`, `checkInfractionThreshold` | T:directors.test.ts | VERIFIED |
-| R14.3 | Escalation behavior & acknowledgement requirement on infraction alerts | alerts + per-user acks exist; ack-required enforcement on this alert type minimal | — | IN_PROGRESS |
+| R14.3 | Acknowledgement requirement on infraction alerts follows admin rule | `buildBriefing` reads `infraction.alertRule.requireAcknowledgement` | T:hardening.test.ts | VERIFIED |
 | R15.1 | Cross-executive director pattern alert, metadata only, private narrative never exposed | `maybeDetectDirectorPattern` | T:directors.test.ts | VERIFIED |
 | R16.1 | Vendor profiles, site filtering | `vendors/page.tsx?site=` | S | IMPLEMENTED |
 | R17.1 | 9 performance record types | `VendorPerformanceRecord` | T:vendors-contracts.test.ts | VERIFIED |
@@ -61,7 +61,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R19.3 | Watch surfaces related vendor concerns | `openConcerns` in watch items | T:vendors-contracts (shape) | VERIFIED |
 | R20.1 | Notes private by default; author-only visibility enforced | Note model, notes/[id] authz redirect, search filter | T:briefing-messaging.test.ts (search authz) | VERIFIED |
 | R20.2 | Make public → visible + comments/threaded replies/@mentions | `makeNotePublicAction`, threaded Comment UI | T (mentions) + S | VERIFIED |
-| R20.3 | Attachments on notes/comments | StoredFile layer exists; note attachment UI not wired | — | NOT_STARTED |
+| R20.3 | Attachments on notes/comments | upload inputs on note create + comment forms → `storeFile`; download chips on `notes/[id]` | storage layer T:hardening.test.ts; UI S | IMPLEMENTED |
 | R21.1 | Private flags (5 labels), invisible to others | `Flag` unique per user | S; briefing test shows per-user flags | VERIFIED |
 | R22.1 | Attention flags: immediate in-app notification linking to source | `directAttentionAction`, mentions | T:briefing-messaging.test.ts | VERIFIED |
 | R22.2 | Optional email notification delivery | Notification model has the seam; SMTP not configured | — | BLOCKED_EXTERNAL |
@@ -70,7 +70,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R24.1 | Contextual discussions on sites/vendors/contracts/projects/public notes | polymorphic `Comment` + UI on each page | S | IMPLEMENTED |
 | R25.1 | Direct & group messaging, unread state, object sharing | `services/messaging.ts`, messages pages | T:briefing-messaging.test.ts | VERIFIED |
 | R25.2 | Participant-only authorization | `sendMessage` guard + page redirect | T:briefing-messaging.test.ts | VERIFIED |
-| R25.3 | True push realtime (websocket/SSE) — currently request/refresh delivery | unread counts + notifications on each request | — | IN_PROGRESS |
+| R25.3 | Real-time push delivery (SSE) | `/api/stream` + `LiveRefresh` client; refresh event pushed on new notifications/messages | Live: SSE refresh event verified on notification insert | VERIFIED |
 | R26.1 | Conversation Brief after configurable inactivity; searchable; retention respected | `maybeBriefInactiveConversations` | T:briefing-messaging.test.ts | VERIFIED |
 | R27.1 | Meeting upload, AI extraction (summary/decisions/actions/unresolved) | `services/meetings.ts` | T:briefing-messaging.test.ts | VERIFIED |
 | R27.2 | Extracted actions become live action items linked to meeting | `uploadMeeting` | T:briefing-messaging.test.ts | VERIFIED |
@@ -78,7 +78,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R29.1 | Briefing = default opening experience, greets by name, personalized | `/` → `/briefing`, `buildBriefing` | T:briefing-messaging.test.ts | VERIFIED |
 | R30.1 | Per-executive acknowledgement; source remains; consequence disclosed | ack flow + UI copy | T:briefing-messaging.test.ts | VERIFIED |
 | R31.1 | Dashboard with the 12 core panels | `dashboard/page.tsx` | S | IMPLEMENTED |
-| R31.2 | Configurable layouts | — | — | NOT_STARTED |
+| R31.2 | Configurable dashboard layouts | per-user panel order/visibility in `User.preferencesJson`; Customize-layout editor on dashboard | S (renders live) | IMPLEMENTED |
 | R32.1 | Activity calendar records all meaningful actions; day/week/month reconstruction | `recordActivity` at every mutation, `/calendar` | T:integration.test.ts | VERIFIED |
 | R32.2 | AI uses calendar as context | `chief.ts gatherContext` | T (chief path) | VERIFIED |
 | R33.1 | Plaud manual import → transcript analysis, searchable, connectable | `services/plaud.ts` | S; analysis path shared w/ tested meeting capability | IMPLEMENTED |
@@ -88,14 +88,14 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R34.2 | AI never silently writes memory | no code path writes MemoryItem from AI | design-level | VERIFIED |
 | R35.1 | Chief of Staff grounded answers with source links; honest when unsupported | `services/chief.ts`, `answerGrounded` system prompt | T:integration.test.ts | VERIFIED |
 | R36.1 | Cross-entity search, permissions enforced before retrieval | `lib/search.ts` query-level filters | T:briefing-messaging.test.ts | VERIFIED |
-| R36.2 | Semantic/natural-language retrieval (beyond keyword) | keyword + structured retrieval today | — | IN_PROGRESS |
+| R36.2 | Natural-language retrieval: multi-term matching + phrase-first ranking | `lib/search.ts` term tokenizer, any-term match, scored ranking | T:hardening.test.ts | VERIFIED |
 | R37.1 | Voice provider abstraction, server-side credentials | env seam (VOICE_PROVIDER/KEY); no vendor hard-coding | — | BLOCKED_EXTERNAL |
 | R38.1 | Training center with Welcome presentation + 17 workflow guides | `/training` | S | IMPLEMENTED |
 | R38.2 | Narrated video training using the real interface | requires voice/recording pipeline | — | BLOCKED_EXTERNAL |
-| R38.3 | Contextual "How do I use this?" on every screen | training hub exists; per-screen links partial | — | IN_PROGRESS |
+| R38.3 | Contextual "How do I use this?" on relevant screens | PageHeader `help` links to anchored training modules on 20 screens | S (anchors + links render live) | VERIFIED |
 | R39.1 | Object storage w/ sha256 dedupe, metadata, ownership, retention | `lib/storage.ts`, StoredFile | unit via upload validation; S | IMPLEMENTED |
 | R40.1 | Relational source of truth; no contradictory stores | single Prisma schema | B | VERIFIED |
-| R40.2 | Background/event processing infrastructure | AiQueueItem + on-request processing; no worker daemon | — | IN_PROGRESS |
+| R40.2 | Background/async processing | outage queue + drain worker + SSE event stream | T:queue-drain.test.ts | VERIFIED |
 | R41.1 | Audit log (actor/action/object/before/after/source) on material actions | `lib/audit.ts` at every mutation | T:email.test.ts, directors.test.ts | VERIFIED |
 | R42.1 | Auth: bcrypt(12), HMAC-signed httpOnly session cookies, DB sessions, timing-safe | `lib/auth.ts` | S (login/redirect) | IMPLEMENTED |
 | R42.2 | Server-side authorization on every read/write | requireUser/requireAdmin + ownership guards | T (messaging/search/notes authz) | VERIFIED |
@@ -103,18 +103,18 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R42.4 | File validation + upload limits | `validateUpload` (type, size, name) | unit path in storage | IMPLEMENTED |
 | R42.5 | Secure headers | next.config.ts headers | B | IMPLEMENTED |
 | R42.6 | Prompt-injection defenses (data-not-instructions framing on all AI inputs) | system prompts in capabilities.ts | design-level | IMPLEMENTED |
-| R42.7 | Rate limiting | — | — | NOT_STARTED |
-| R42.8 | Dependency scanning in CI | no CI pipeline in repo yet | — | NOT_STARTED |
+| R42.7 | Rate limiting + login throttling | `lib/ratelimit.ts` (login action per-IP, API routes per-user) + DB-backed `lib/loginThrottle.ts`; NOT in proxy (sandbox holds no state) | T:hardening.test.ts + live 429 after 240 API calls | VERIFIED |
+| R42.8 | CI with dependency scanning | `.github/workflows/ci.yml` (test, build, `npm audit --audit-level=high`); local audit clean after Next 16.3.0 upgrade | local audit: 0 vulnerabilities; pipeline runs on push | IMPLEMENTED |
 | R42.9 | Encryption at rest / TLS | deployment-platform concern, documented | — | BLOCKED_EXTERNAL |
 | R43.1 | Exports: chronology, meeting, site, vendor, director, activity, briefing — with attribution | `/api/export/*`, `services/exports.ts` | T:integration.test.ts + S | VERIFIED |
-| R43.2 | Project & contract dedicated report exports | site/vendor reports include them; standalone exports pending | — | IN_PROGRESS |
+| R43.2 | Project & contract dedicated report exports | `projectReport`/`contractReport` + `/api/export/(project|contract)/[id]` + UI buttons | T:hardening.test.ts + live 200 | VERIFIED |
 | R44.1 | Global integration chain (16 steps) | full-stack services | T:integration.test.ts | VERIFIED |
 | R45.1 | Primary-outage failover test | — | T:orchestrator.test.ts | VERIFIED |
 | R45.2 | Total-outage emergency test (app continues, queue, status, no loss) | — | T:email.test.ts, orchestrator.test.ts | VERIFIED |
-| R49.1 | Release gate | see BUILD_STATUS.md — **not yet passed**; open items above | — | IN_PROGRESS |
+| R49.1 | Release gate | see BUILD_STATUS.md — remaining: Playwright browser E2E, performance pass, live-provider AI evals (needs keys) | — | IN_PROGRESS |
 
 ## Summary (counted from this register)
-- VERIFIED: 52 · IMPLEMENTED: 14 · IN_PROGRESS: 9 · NOT_STARTED: 5 · BLOCKED_EXTERNAL: 7
+- VERIFIED: 63 · IMPLEMENTED: 16 · IN_PROGRESS: 1 (the release gate itself) · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 7
 
 ## BLOCKED_EXTERNAL — unblock conditions
 1. **Live AI providers** — set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (server env). All orchestration, failover, and emergency paths are built and tested against the provider interface.

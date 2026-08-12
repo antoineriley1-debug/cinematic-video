@@ -15,7 +15,8 @@ export default async function DirectorsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Directors" subtitle={`${directors.length} director profiles`} />
+      <PageHeader title="Directors"
+        help="director-file" subtitle={`${directors.length} director profiles`} />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {directors.map((d) => (
           <Link key={d.id} href={`/directors/${d.id}`} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-300 hover:shadow">

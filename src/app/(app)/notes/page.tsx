@@ -27,6 +27,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
     <div className="space-y-6">
       <PageHeader
         title={corporate ? "Corporate Notes" : "Executive Notes"}
+        help="notes-public-notes"
         subtitle="Notes default to private. Public notes are visible to authorized executives and support comments, replies, and @mentions."
         action={
           <div className="flex gap-2 text-sm">
@@ -41,6 +42,10 @@ export default async function NotesPage({ searchParams }: { searchParams: Promis
         <form action={createNoteAction} className="space-y-3">
           <input name="title" placeholder="Title (optional)" className={inputCls} />
           <textarea name="content" rows={3} required placeholder="Write your note — @Name directs attention when public" className={inputCls} />
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">Attachments (optional)</label>
+            <input name="attachments" type="file" multiple className={inputCls} />
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <select name="visibility" className={inputCls}>
               <option value="PRIVATE">Private — only me</option>

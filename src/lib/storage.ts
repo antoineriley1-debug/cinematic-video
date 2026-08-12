@@ -6,7 +6,7 @@ import "server-only";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { prisma } from "./db";
+import type { Db } from "./db";
 
 const ALLOWED_MIME_PREFIXES = [
   "text/",
@@ -35,7 +35,7 @@ function storageRoot(): string {
   return path.resolve(process.env.STORAGE_DIR || "./storage");
 }
 
-export async function storeFile(opts: {
+export async function storeFile(db: Db, opts: {
   buffer: Buffer;
   filename: string;
   mimeType: string;
@@ -49,7 +49,7 @@ export async function storeFile(opts: {
   const sha256 = crypto.createHash("sha256").update(opts.buffer).digest("hex");
 
   // Deduplicate the stored object; keep a per-context reference row.
-  const existing = await prisma.storedFile.findFirst({ where: { sha256 } });
+  const existing = await db.storedFile.findFirst({ where: { sha256 } });
   let key: string;
   if (existing) {
     key = existing.path;
@@ -60,7 +60,7 @@ export async function storeFile(opts: {
     await fs.writeFile(full, opts.buffer);
   }
 
-  return prisma.storedFile.create({
+  return db.storedFile.create({
     data: {
       filename: opts.filename,
       mimeType: opts.mimeType,
@@ -74,8 +74,8 @@ export async function storeFile(opts: {
   });
 }
 
-export async function readFileBuffer(fileId: string): Promise<{ buffer: Buffer; file: { filename: string; mimeType: string } } | null> {
-  const file = await prisma.storedFile.findUnique({ where: { id: fileId } });
+export async function readFileBuffer(db: Db, fileId: string): Promise<{ buffer: Buffer; file: { filename: string; mimeType: string } } | null> {
+  const file = await db.storedFile.findUnique({ where: { id: fileId } });
   if (!file) return null;
   const full = path.join(storageRoot(), file.path);
   const buffer = await fs.readFile(full);

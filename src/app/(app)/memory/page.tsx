@@ -13,6 +13,7 @@ export default async function MemoryPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Executive Memory"
+        help="memory"
         subtitle="Context you deliberately commit for your AI assistant. You can inspect, edit, and delete everything here. AI guesses never become memory silently."
       />
 

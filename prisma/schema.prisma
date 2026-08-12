@@ -22,6 +22,8 @@ model User {
   role         String   @default("EXECUTIVE") // ADMIN | EXECUTIVE
   passwordHash String
   voiceProfile String?
+  // Per-user UI preferences (dashboard panel order/visibility, etc.) as JSON.
+  preferencesJson String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 

@@ -31,6 +31,7 @@ export default async function ProjectsPage() {
               {p.site?.name ?? "Corporate"} {p.dueDate ? `· due ${fmtDate(p.dueDate)}` : ""}
             </div>
             {p.description && <p className="mt-2 text-sm text-slate-600">{p.description}</p>}
+            <a href={`/api/export/project/${p.id}`} className="mt-1 inline-block text-xs font-medium text-blue-600 hover:underline">Export report →</a>
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="space-y-2">
                 {comments.filter((c) => c.entityId === p.id).map((c) => (

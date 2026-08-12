@@ -20,6 +20,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ id: st
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title={meeting.title}
+        help="meeting-minutes"
         subtitle={`${fmtDate(meeting.heldAt ?? meeting.createdAt)}`}
         action={
           <div className="flex items-center gap-2">

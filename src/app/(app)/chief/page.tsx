@@ -27,6 +27,7 @@ export default async function ChiefPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="AI Chief of Staff"
+        help="ai-chief-of-staff"
         subtitle="Answers are grounded in your authorized records and always cite their sources."
       />
 

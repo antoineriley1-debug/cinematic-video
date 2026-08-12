@@ -26,6 +26,11 @@ export type SettingsShape = {
   "uploads.maxBytes": number;
   "retention.conversationBriefs": "KEEP" | "ARCHIVE";
   "ai.primaryProvider": "anthropic" | "openai";
+  // Per-personality rule overrides: { FIRM: ["rule 1", "rule 2"], ... }.
+  // Overrides replace the code-defined rules for that personality.
+  "personalities.overrides": Record<string, string[]>;
+  "security.loginMaxFailures": number;
+  "security.loginWindowMinutes": number;
 };
 
 export const DEFAULT_SETTINGS: SettingsShape = {
@@ -49,6 +54,9 @@ export const DEFAULT_SETTINGS: SettingsShape = {
   "uploads.maxBytes": 50 * 1024 * 1024,
   "retention.conversationBriefs": "KEEP",
   "ai.primaryProvider": "anthropic",
+  "personalities.overrides": {},
+  "security.loginMaxFailures": 8,
+  "security.loginWindowMinutes": 15,
 };
 
 export async function getSetting<K extends keyof SettingsShape>(

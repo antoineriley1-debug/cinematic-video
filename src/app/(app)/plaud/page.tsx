@@ -14,6 +14,7 @@ export default async function PlaudPage() {
     <div className="space-y-6">
       <PageHeader
         title="Plaud Recordings"
+        help="plaud"
         subtitle="Plaud is the designated recording source. Import transcripts here; direct Plaud API sync activates when credentials are configured (Admin Console)."
       />
 

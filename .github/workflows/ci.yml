@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "file:./dev.db"
+      SESSION_SECRET: "ci-secret-0123456789abcdef0123456789abcdef0123456789abcdef"
+      STORAGE_DIR: "./storage-ci"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run test suite
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Dependency vulnerability scan
+        run: npm audit --audit-level=high

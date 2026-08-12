@@ -17,6 +17,7 @@ export default async function EmailsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Email Intelligence"
+        help="email-intelligence"
         subtitle="Drag-and-drop or paste emails you choose to submit. Crothall Executive OS never logs into or syncs your corporate inbox."
       />
 

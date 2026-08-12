@@ -4,6 +4,8 @@ import { requireUser, logout } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { unreadCount } from "@/lib/services/messaging";
+import { drainAiQueue } from "@/lib/services/aiQueue";
+import LiveRefresh from "@/components/LiveRefresh";
 
 const NAV = [
   { href: "/briefing", label: "Daily Briefing" },
@@ -34,6 +36,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   const aiUp = orchestrator.aiAvailable();
 
+  // Opportunistic background drain: if AI is available and outage-queued
+  // work exists, re-process it without blocking the page.
+  if (aiUp) {
+    const queued = await prisma.aiQueueItem.count({ where: { status: "QUEUED" } });
+    if (queued > 0) void drainAiQueue(prisma, orchestrator).catch(() => {});
+  }
+
   async function doLogout() {
     "use server";
     await logout();
@@ -42,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
+      <LiveRefresh />
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 md:flex">
         <div className="px-5 py-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Crothall</div>

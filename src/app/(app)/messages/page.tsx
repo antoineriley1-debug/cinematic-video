@@ -29,7 +29,8 @@ export default async function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Executive Messaging" subtitle="Direct and group messages. Share projects, contracts, notes, and files into a conversation." />
+      <PageHeader title="Executive Messaging"
+        help="messaging" subtitle="Direct and group messages. Share projects, contracts, notes, and files into a conversation." />
 
       <Card title="Start a conversation">
         <form action={startConversationAction} className="space-y-3">

@@ -36,6 +36,7 @@ export default async function VendorPage({ params }: { params: Promise<{ id: str
     <div className="space-y-6">
       <PageHeader
         title={vendor.name}
+        help="vendor-intelligence"
         subtitle={`${vendor.category ?? "Vendor"} · serves ${vendor.sites.map((s) => s.site.name).join(", ") || "no sites yet"}`}
         action={<a href={`/api/export/vendor/${vendor.id}`} className={btnSecondaryCls}>Export report</a>}
       />

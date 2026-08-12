@@ -12,7 +12,8 @@ export default async function MeetingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Meeting Minutes" subtitle="Uploads since your previous briefing feed the next daily briefing automatically." />
+      <PageHeader title="Meeting Minutes"
+        help="meeting-minutes" subtitle="Uploads since your previous briefing feed the next daily briefing automatically." />
 
       <Card title="Upload minutes">
         <form action={uploadMeetingAction} className="space-y-3">

@@ -18,7 +18,8 @@ export default async function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Contracts" subtitle={`${contracts.length} contracts · ${watch.length} inside the renewal watch window`} />
+      <PageHeader title="Contracts"
+        help="contract-search" subtitle={`${contracts.length} contracts · ${watch.length} inside the renewal watch window`} />
 
       {watch.length > 0 && (
         <Card title="Renewal Watch">

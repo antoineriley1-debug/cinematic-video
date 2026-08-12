@@ -13,7 +13,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Enterprise Search" subtitle="Searches only what you're authorized to see — private records of other executives are excluded at the query level." />
+      <PageHeader title="Enterprise Search"
+        help="search" subtitle="Searches only what you're authorized to see — private records of other executives are excluded at the query level." />
       <form method="GET" className="flex gap-2">
         <input name="q" defaultValue={q ?? ""} placeholder="Search sites, directors, vendors, contracts, projects, emails, meetings, notes, actions…" className={inputCls} autoFocus />
         <button className={btnCls}>Search</button>

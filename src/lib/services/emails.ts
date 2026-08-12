@@ -11,6 +11,7 @@ import { parseJson } from "../validate";
 import type { Orchestrator } from "../ai/orchestrator";
 import { analyzeEmail } from "../ai/capabilities";
 import { parseEml } from "../email/parse";
+import { storeFile } from "../storage";
 
 export type IngestResult = {
   emailId: string;
@@ -47,6 +48,23 @@ export async function ingestEmail(
       uploadedById: opts.uploadedById,
     },
   });
+
+  // Attachments become content-addressed stored files linked to this email.
+  for (const attachment of parsed.attachments.slice(0, 20)) {
+    try {
+      await storeFile(db, {
+        buffer: attachment.content,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        ownerId: opts.uploadedById,
+        entityType: "EMAIL",
+        entityId: email.id,
+      });
+    } catch {
+      // Disallowed type/size — the email itself still ingests; the original
+      // source retains the raw attachment data.
+    }
+  }
 
   const analysis = await analyzeEmail(
     db,

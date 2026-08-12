@@ -3,15 +3,19 @@
 // source attribution preserved.
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
+import { isRateLimited, LIMITS } from "@/lib/ratelimit";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { siteReport, directorReport, vendorReport, meetingReport, activityReport } from "@/lib/services/exports";
+import { siteReport, directorReport, vendorReport, meetingReport, activityReport, projectReport, contractReport } from "@/lib/services/exports";
 import { buildTimeline, exportTimelineText } from "@/lib/services/emails";
 import { buildBriefing, exportBriefingText } from "@/lib/services/briefing";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string[] }> }) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (isRateLimited(`api:${user.id}`, LIMITS.api)) {
+    return new NextResponse("Too many requests", { status: 429, headers: { "retry-after": "60" } });
+  }
   const { slug } = await ctx.params;
   const [kind, id] = slug;
 
@@ -34,6 +38,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
       case "meeting":
         text = await meetingReport(prisma, id);
         filename = `meeting-report-${id}.txt`;
+        break;
+      case "project":
+        text = await projectReport(prisma, id);
+        filename = `project-report-${id}.txt`;
+        break;
+      case "contract":
+        text = await contractReport(prisma, id);
+        filename = `contract-report-${id}.txt`;
         break;
       case "email-timeline": {
         const batch = await prisma.emailBatch.findUniqueOrThrow({ where: { id } });

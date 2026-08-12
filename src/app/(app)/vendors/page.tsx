@@ -22,6 +22,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
     <div className="space-y-6">
       <PageHeader
         title="Vendor Intelligence"
+        help="vendor-intelligence"
         subtitle={`${vendors.length} vendors`}
         action={
           <form method="GET" className="flex gap-2">

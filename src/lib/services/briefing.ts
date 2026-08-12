@@ -96,16 +96,20 @@ export async function buildBriefing(db: Db, userId: string, now = new Date()): P
     });
   }
 
-  // Pattern & threshold alerts (director, vendor, providers).
+  // Pattern & threshold alerts (director, vendor, providers). Whether an
+  // infraction-threshold alert demands acknowledgement follows the
+  // admin-configured rule.
+  const infractionRule = await getSetting(db, "infraction.alertRule");
   const alerts = await db.alert.findMany({ orderBy: { createdAt: "desc" }, take: 15 });
   for (const a of alerts) {
+    const requiresAck = a.type === "INFRACTION_THRESHOLD" ? infractionRule.requireAcknowledgement : true;
     push({
       key: `alert:${a.id}`,
       kind: a.type,
       title: a.title,
       detail: a.body ?? "",
       href: a.entityType && a.entityId ? hrefFor(a.entityType, a.entityId) : "/dashboard",
-      requiresAck: true,
+      requiresAck,
       urgency: a.type === "PROVIDER_OUTAGE" ? "ATTENTION" : "CRITICAL",
     });
   }

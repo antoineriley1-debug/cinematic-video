@@ -24,6 +24,7 @@ export default async function DirectorPage({ params }: { params: Promise<{ id: s
     <div className="space-y-6">
       <PageHeader
         title={director.name}
+        help="director-file"
         subtitle={`${director.title ?? "Director"} · ${director.site?.name ?? "No site"}${director.email ? ` · ${director.email}` : ""}`}
         action={<a href={`/api/export/director/${director.id}`} className={btnSecondaryCls}>Export operational history</a>}
       />
