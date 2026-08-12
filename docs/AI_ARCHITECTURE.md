@@ -15,8 +15,11 @@
 
 ## Components
 - `ai/types.ts` — capability/request/response contracts, error types.
-- `ai/providers/anthropic.ts`, `openai.ts` — fetch-based adapters with
-  timeouts and health probes. `mock.ts` — controllable test double.
+- `ai/providers/anthropic.ts`, `google.ts` (Gemini), `openai.ts` —
+  fetch-based adapters with timeouts and health probes. `mock.ts` —
+  controllable test double. Adding a vendor = one adapter file implementing
+  `AiProvider` plus registration in `getOrchestrator` (the Gemini adapter is
+  the template: ~60 lines).
 - `ai/orchestrator.ts` — provider ordering (admin setting
   `ai.primaryProvider`), per-provider health state, automatic failover with
   user continuity notices + admin alerts, `ProviderEvent` logging

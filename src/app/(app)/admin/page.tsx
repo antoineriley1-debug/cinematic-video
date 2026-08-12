@@ -118,8 +118,9 @@ export default async function AdminPage() {
       <Card title="External integrations">
         <ul className="space-y-2 text-sm text-slate-700">
           <li>
-            <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Anthropic / OpenAI keys</strong> — set
-            ANTHROPIC_API_KEY / OPENAI_API_KEY in the server environment to activate live AI. Keys never reach the browser.
+            <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>AI provider keys</strong> — set any of
+            ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY in the server environment to activate live AI with
+            automatic failover across whichever are configured. Keys never reach the browser.
           </li>
           <li>
             <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Plaud API sync</strong> — manual import works today;

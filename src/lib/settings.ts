@@ -25,7 +25,7 @@ export type SettingsShape = {
   "emergency.deadlineKeywords": string[];
   "uploads.maxBytes": number;
   "retention.conversationBriefs": "KEEP" | "ARCHIVE";
-  "ai.primaryProvider": "anthropic" | "openai";
+  "ai.primaryProvider": "anthropic" | "google" | "openai";
   // Per-personality rule overrides: { FIRM: ["rule 1", "rule 2"], ... }.
   // Overrides replace the code-defined rules for that personality.
   "personalities.overrides": Record<string, string[]>;

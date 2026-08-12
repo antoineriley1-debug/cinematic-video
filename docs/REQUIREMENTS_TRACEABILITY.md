@@ -27,7 +27,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R6.16 | Email attachment parsing (extract & store .eml attachments as files) | `email/parse.ts` MIME attachment extraction → `storeFile` linked to email; shown on `emails/[id]` | T:hardening.test.ts | VERIFIED |
 | R7.1 | No mailbox login/sync; intentional submission only | no mail-sync code exists; UI states policy | design-level | VERIFIED |
 | R7.2 | Method B intake address | env seam `EMAIL_INTAKE_ADDRESS`; needs inbound-mail infra | — | BLOCKED_EXTERNAL |
-| R8.1 | Secondary provider assumes on primary failure | `ai/orchestrator.ts` | T:orchestrator.test.ts | VERIFIED |
+| R8.1 | Secondary provider assumes on primary failure (3 vendors: Anthropic, Google Gemini, OpenAI; two-hop cascade) | `ai/orchestrator.ts`, `ai/providers/*` | T:orchestrator.test.ts, google-provider.test.ts | VERIFIED |
 | R8.2 | Subtle user continuity notice + admin technical alert | `notifyFailover/notifyOutage` | T:orchestrator.test.ts | VERIFIED |
 | R8.3 | Emergency engine on total outage; health-controlled, not user-toggled | `ai/emergency.ts`; activation only via orchestrator failure path | T:email.test.ts, emergency.test.ts | VERIFIED |
 | R8.4 | Emergency capabilities: classification/urgency/intent/deadlines/actions/templates | `emergency.ts`, personality templates | T:emergency.test.ts, drafting.test.ts | VERIFIED |

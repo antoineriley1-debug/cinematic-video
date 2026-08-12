@@ -195,6 +195,7 @@ export async function getOrchestrator(db: Db): Promise<Orchestrator> {
   if (_orchestrator) return _orchestrator;
   const { AnthropicProvider } = await import("./providers/anthropic");
   const { OpenAiProvider } = await import("./providers/openai");
-  _orchestrator = new Orchestrator(db, [new AnthropicProvider(), new OpenAiProvider()]);
+  const { GoogleProvider } = await import("./providers/google");
+  _orchestrator = new Orchestrator(db, [new AnthropicProvider(), new GoogleProvider(), new OpenAiProvider()]);
   return _orchestrator;
 }
