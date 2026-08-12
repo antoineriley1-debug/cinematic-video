@@ -1,76 +1,72 @@
 # BUILD_STATUS
 
-_Last updated: 2026-08-12 (hardening pass)_
+_Last updated: 2026-08-12 (E2E + performance pass, independently verified)_
 
 ## Current Phase
-All 14 previously open IN_PROGRESS / NOT_STARTED requirements are closed
-(11 newly VERIFIED with tests or live evidence, 3 IMPLEMENTED with smoke
-evidence). Remaining gate items are listed below.
+All local release-gate items are closed. The only remaining gate item is
+externally blocked: a live-provider AI evaluation and failover drill, which
+requires ANTHROPIC_API_KEY / OPENAI_API_KEY.
 
-## Completed (this pass)
-- **AI queue drain worker** — outage-queued email/meeting analysis is
-  re-processed automatically on provider recovery (health check, admin
-  button, opportunistic layout drain). Tested end to end.
-- **Real-time push** — SSE stream (`/api/stream`) + client auto-refresh;
-  a live insert of a notification was observed pushing a refresh event.
-- **Rate limiting + login throttling** — application-layer sliding-window
-  limiter (login per-IP, API routes per-user; live-verified 429 after the
-  240th request) plus a durable DB-backed per-email failed-login throttle.
-  Note: the Next 16 proxy sandbox does not retain state between requests,
-  so limiting lives in the Node app layer by design.
-- **Email attachment parsing** — MIME attachments extracted, stored
-  content-addressed, linked to the email, downloadable from the email page.
-- **Note/comment attachments** — upload inputs wired to the shared storage
-  layer; download chips rendered.
-- **Configurable dashboard** — per-user panel order/visibility with an
-  on-page editor (`User.preferencesJson`).
-- **Admin-editable personality rules** — `personalities.overrides` setting
-  replaces code-defined rules per profile; drafting prompts proven to use
-  overrides.
-- **Infraction-alert acknowledgement rule** — briefing honors the admin
-  `requireAcknowledgement` flag.
-- **Natural-language search** — multi-term tokenization, any-term matching,
-  phrase-first ranking, per-type result caps.
-- **Contextual help** — "How do I use this?" links on 20 screens anchored
-  into the Training Center.
-- **Project & contract report exports** — new endpoints + UI buttons.
-- **CI pipeline** — GitHub Actions: tests, production build, and
-  `npm audit --audit-level=high`. The audit surfaced real high-severity
-  advisories in Next 16.2.6; **upgraded to Next 16.3.0 → 0 vulnerabilities**.
+## Completed (this pass — built by independent agents, then re-verified)
+- **Playwright browser E2E suite** (`e2e/`, 10 spec files, 16 tests):
+  login (including bad-password and unauthenticated-redirect), briefing with
+  contract countdown + acknowledgement persistence, site observation + full
+  site-visit workflow, infraction recording + director timeline, email
+  ingestion → deterministic analysis → relationship confirmation →
+  corrective draft, meeting minutes extraction, executive messaging,
+  Chief of Staff with source links, enterprise search, briefing export
+  (authenticated and 401 unauthenticated). Green in the agent's two runs
+  AND in my independent re-run (16/16, ~15s).
+- **Two real app bugs found by E2E and fixed**:
+  1. Chief of Staff retrieval regex required exact word matches, so
+     "contracts", "expiration", "renewals", "deadlines" never pulled the
+     live contract watch into answers. Fixed to stem matching.
+  2. Login form labels were not associated with inputs (accessibility).
+- **Performance/reliability pass** (`scripts/perf.mjs`,
+  `docs/PERFORMANCE.md`): all budgets pass — worst page p95 38.5ms against
+  a 1500ms budget, 410/410 requests 200, clean 20-way concurrency, flat
+  latency after +200 activity/+100 note growth probe. Re-run independently
+  (exit 0).
+- **CI confirmed green on GitHub**: Actions run #1 (install → prisma
+  generate → 63 vitest tests → production build → npm audit) concluded
+  `success`; audit reports 0 vulnerabilities on Next 16.3.0.
 
 ## Tests Passing
-63/63 (16 added this pass: queue drain ×4, rate limiter, login throttle ×2,
-personality overrides, NL search ×3, infraction ack rule, attachments ×2,
-project/contract reports ×2). `next build` clean on Next 16.3.0; all pages
-render 200 live; SSE push, API 429, exports, anchors verified live.
+- Vitest: 63/63 (service, failure, security, integration chain).
+- Playwright E2E: 16/16 (real Chromium, isolated seeded database).
+- Performance budgets: 4/4 (script exits nonzero on any failure).
+- GitHub Actions CI: run #1 success.
 
 ## Tests Failing
 None.
 
 ## Requirements Verified / Remaining
-From docs/REQUIREMENTS_TRACEABILITY.md (87 tracked rows):
-**63 VERIFIED · 16 IMPLEMENTED · 1 IN_PROGRESS (the release gate itself) · 0 NOT_STARTED · 7 BLOCKED_EXTERNAL**
+From docs/REQUIREMENTS_TRACEABILITY.md (89 tracked rows):
+**73 VERIFIED · 8 IMPLEMENTED · 0 IN_PROGRESS · 0 NOT_STARTED · 8 BLOCKED_EXTERNAL**
+The 8 IMPLEMENTED rows (e.g. vendor site-filter UI, corporate notes
+workspace, memory UI, training center, dashboard layout editor, note
+attachments UI, upload-rejection paths, secure headers) work in live smoke
+but lack a dedicated automated test each.
 
 ## Security Findings
-No known high-severity findings open. `npm audit`: 0 vulnerabilities.
-Rate limiting and login throttling active. Multi-instance deployments still
-need a shared limiter store or platform WAF (documented in docs/SECURITY.md).
+None open. `npm audit`: 0 vulnerabilities. Rate limiting, login throttling,
+query-level authorization, and audit logging all test-covered.
 
-## External Blockers (unchanged — need credentials/infrastructure)
-AI provider keys · Method-B email intake infrastructure · Plaud API
-credentials · SMTP for email notification delivery · voice provider ·
-production TLS/at-rest encryption · production PostgreSQL.
+## External Blockers (all documented with unblock conditions in the register)
+AI provider keys (also blocks the final release-gate drill) · Method-B email
+intake infrastructure · Plaud API credentials · SMTP delivery · voice
+provider · production TLS/at-rest encryption · production PostgreSQL.
 
 ## Release Gate
-**NOT PASSED** — remaining items are narrower now:
-1. Playwright browser E2E of the golden path (service-level integration is
-   tested; a real-browser pass is not).
-2. Performance/load pass (Master Spec phase 27).
-3. Live-provider AI evaluations + failover drill against real APIs
-   (requires keys — BLOCKED_EXTERNAL).
-4. First green run of the CI pipeline on GitHub (triggers on this push).
+**All locally verifiable criteria pass.** The gate formally remains
+BLOCKED_EXTERNAL on one item: live-provider AI evaluations and a real
+failover drill (primary key disabled → secondary assumes → recovery), which
+cannot run without API keys. Everything else — requirements audit, unit/
+integration/E2E tests, emergency-mode tests, mock failover tests, security
+checks, clean build, migrations (db push), deployment/backup/admin/training
+documentation — is done and evidenced.
 
 ## Next Action
-1. Watch the CI run triggered by this push.
-2. Playwright E2E: login → briefing → email upload → draft → ack.
-3. On receipt of AI keys: live failover drill + AI output evals.
+1. Provide ANTHROPIC_API_KEY and/or OPENAI_API_KEY → run the live failover
+   drill and AI-quality evals; flip the final gate item.
+2. Optional hardening: dedicated tests for the 8 remaining IMPLEMENTED rows.

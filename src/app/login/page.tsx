@@ -36,12 +36,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         )}
         <form action={doLogin} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-            <input name="email" type="email" required autoComplete="email" className={inputCls} />
+            <label htmlFor="login-email" className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <input id="login-email" name="email" type="email" required autoComplete="email" className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
-            <input name="password" type="password" required autoComplete="current-password" className={inputCls} />
+            <label htmlFor="login-password" className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+            <input id="login-password" name="password" type="password" required autoComplete="current-password" className={inputCls} />
           </div>
           <button type="submit" className={`${btnCls} w-full justify-center`}>
             Sign in

@@ -31,7 +31,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R8.2 | Subtle user continuity notice + admin technical alert | `notifyFailover/notifyOutage` | T:orchestrator.test.ts | VERIFIED |
 | R8.3 | Emergency engine on total outage; health-controlled, not user-toggled | `ai/emergency.ts`; activation only via orchestrator failure path | T:email.test.ts, emergency.test.ts | VERIFIED |
 | R8.4 | Emergency capabilities: classification/urgency/intent/deadlines/actions/templates | `emergency.ts`, personality templates | T:emergency.test.ts, drafting.test.ts | VERIFIED |
-| R8.5 | "Emergency Intelligence Mode" clearly displayed | header badge, ModeBadge on records, admin banner | S | IMPLEMENTED |
+| R8.5 | "Emergency Intelligence Mode" clearly displayed | header badge, ModeBadge on records, admin banner | T:e2e/05 (badge + "[Deterministic]" asserted in browser) | VERIFIED |
 | R8.6 | Queued AI work during outage, no data loss | `AiQueueItem`, queueWork | T:email.test.ts, orchestrator.test.ts | VERIFIED |
 | R8.7 | Queue drain on provider recovery (background re-analysis) | `services/aiQueue.ts drainAiQueue`; runs on health-check recovery, admin button, and opportunistically from layout | T:queue-drain.test.ts | VERIFIED |
 | R9.1 | 12 outgoing personality profiles with structured rules | `ai/personalities.ts` | T:drafting.test.ts | VERIFIED |
@@ -39,11 +39,11 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R9.3 | Profiles work in AI mode AND emergency templates | `draftEmailReply` fallback | T:drafting.test.ts | VERIFIED |
 | R9.4 | Admin-editable personality rules | Setting `personalities.overrides` merged by `resolvePersonalityRules`; editable in Admin Console | T:hardening.test.ts | VERIFIED |
 | R10.1 | 10 sites seeded, unbounded architecture | `prisma/seed.ts`, Site model | S | VERIFIED |
-| R10.2 | Site profile: directors/executives/projects/observations/vendors/contracts/visits/timeline | `sites/[id]/page.tsx` | S | IMPLEMENTED |
+| R10.2 | Site profile: directors/executives/projects/observations/vendors/contracts/visits/timeline | `sites/[id]/page.tsx` | T:e2e/03 | VERIFIED |
 | R10.3 | Six observation categories incl. back burner/radar | `SiteObservation.category` | T:briefing tests use CRITICAL | VERIFIED |
-| R11.1 | Site Visit Mode with all six capture categories | `visits/[id]`, `services/visits.ts` | S | IMPLEMENTED |
-| R11.2 | Visit completion → structured record + calendar activity | `completeVisit` | unit-level via service; S | IMPLEMENTED |
-| R12.1 | Director profiles with connected file | `directors/[id]` | S | IMPLEMENTED |
+| R11.1 | Site Visit Mode with all six capture categories | `visits/[id]`, `services/visits.ts` | T:e2e/03 (start → observe → complete in browser) | VERIFIED |
+| R11.2 | Visit completion → structured record + calendar activity | `completeVisit` | T:e2e/03 (visit + COMPLETED badge on site page) | VERIFIED |
+| R12.1 | Director profiles with connected file | `directors/[id]` | T:e2e/04 (infraction recorded + timeline in browser) | VERIFIED |
 | R13.1 | Add to Director File with 9 classifications from email/Plaud/manual | `addToDirectorFile` + forms | T:directors.test.ts | VERIFIED |
 | R13.2 | AI recommends classification but cannot file infractions | server-side guard | T:directors.test.ts | VERIFIED |
 | R14.1 | Structured infraction records with audit history | `Infraction` model, `recordInfraction` | T:directors.test.ts | VERIFIED |
@@ -93,28 +93,30 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R38.1 | Training center with Welcome presentation + 17 workflow guides | `/training` | S | IMPLEMENTED |
 | R38.2 | Narrated video training using the real interface | requires voice/recording pipeline | — | BLOCKED_EXTERNAL |
 | R38.3 | Contextual "How do I use this?" on relevant screens | PageHeader `help` links to anchored training modules on 20 screens | S (anchors + links render live) | VERIFIED |
-| R39.1 | Object storage w/ sha256 dedupe, metadata, ownership, retention | `lib/storage.ts`, StoredFile | unit via upload validation; S | IMPLEMENTED |
+| R39.1 | Object storage w/ sha256 dedupe, metadata, ownership, retention | `lib/storage.ts`, StoredFile | T:hardening.test.ts (attachment stored, sha256, linkage) | VERIFIED |
 | R40.1 | Relational source of truth; no contradictory stores | single Prisma schema | B | VERIFIED |
 | R40.2 | Background/async processing | outage queue + drain worker + SSE event stream | T:queue-drain.test.ts | VERIFIED |
 | R41.1 | Audit log (actor/action/object/before/after/source) on material actions | `lib/audit.ts` at every mutation | T:email.test.ts, directors.test.ts | VERIFIED |
-| R42.1 | Auth: bcrypt(12), HMAC-signed httpOnly session cookies, DB sessions, timing-safe | `lib/auth.ts` | S (login/redirect) | IMPLEMENTED |
+| R42.1 | Auth: bcrypt(12), HMAC-signed httpOnly session cookies, DB sessions, timing-safe | `lib/auth.ts` | T:e2e/01 (bad password rejected, login, unauthenticated redirect) | VERIFIED |
 | R42.2 | Server-side authorization on every read/write | requireUser/requireAdmin + ownership guards | T (messaging/search/notes authz) | VERIFIED |
 | R42.3 | AI keys server-side only | providers only imported server-side; no NEXT_PUBLIC | B | VERIFIED |
 | R42.4 | File validation + upload limits | `validateUpload` (type, size, name) | unit path in storage | IMPLEMENTED |
 | R42.5 | Secure headers | next.config.ts headers | B | IMPLEMENTED |
 | R42.6 | Prompt-injection defenses (data-not-instructions framing on all AI inputs) | system prompts in capabilities.ts | design-level | IMPLEMENTED |
 | R42.7 | Rate limiting + login throttling | `lib/ratelimit.ts` (login action per-IP, API routes per-user) + DB-backed `lib/loginThrottle.ts`; NOT in proxy (sandbox holds no state) | T:hardening.test.ts + live 429 after 240 API calls | VERIFIED |
-| R42.8 | CI with dependency scanning | `.github/workflows/ci.yml` (test, build, `npm audit --audit-level=high`); local audit clean after Next 16.3.0 upgrade | local audit: 0 vulnerabilities; pipeline runs on push | IMPLEMENTED |
+| R42.8 | CI with dependency scanning | `.github/workflows/ci.yml` (test, build, `npm audit --audit-level=high`) | GitHub Actions run #1: conclusion success; audit 0 vulnerabilities | VERIFIED |
 | R42.9 | Encryption at rest / TLS | deployment-platform concern, documented | — | BLOCKED_EXTERNAL |
 | R43.1 | Exports: chronology, meeting, site, vendor, director, activity, briefing — with attribution | `/api/export/*`, `services/exports.ts` | T:integration.test.ts + S | VERIFIED |
 | R43.2 | Project & contract dedicated report exports | `projectReport`/`contractReport` + `/api/export/(project|contract)/[id]` + UI buttons | T:hardening.test.ts + live 200 | VERIFIED |
 | R44.1 | Global integration chain (16 steps) | full-stack services | T:integration.test.ts | VERIFIED |
 | R45.1 | Primary-outage failover test | — | T:orchestrator.test.ts | VERIFIED |
 | R45.2 | Total-outage emergency test (app continues, queue, status, no loss) | — | T:email.test.ts, orchestrator.test.ts | VERIFIED |
-| R49.1 | Release gate | see BUILD_STATUS.md — remaining: Playwright browser E2E, performance pass, live-provider AI evals (needs keys) | — | IN_PROGRESS |
+| R48.1 | UX loop: realistic executive workflows in a real browser | `e2e/` Playwright suite (10 specs, 16 tests): login, briefing + ack, site visit, infraction, email → confirm link → corrective draft, meetings, messaging, Chief of Staff w/ sources, search, export | T:e2e — 16/16, independently re-run | VERIFIED |
+| R49.2 | Performance/reliability pass | `scripts/perf.mjs` + `docs/PERFORMANCE.md`; budgets: worst page p95 38.5ms (≤1500), 410/410 status 200, clean 20-way concurrency, growth probe flat | rerunnable script, exit 0, independently re-run | VERIFIED |
+| R49.1 | Release gate | every local gate passes: vitest 63/63, E2E 16/16, perf budgets, CI green on GitHub, audit 0 vulns, build clean. Sole remaining item: live-provider AI evaluation + failover drill, which requires API keys | — | BLOCKED_EXTERNAL |
 
 ## Summary (counted from this register)
-- VERIFIED: 63 · IMPLEMENTED: 16 · IN_PROGRESS: 1 (the release gate itself) · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 7
+- VERIFIED: 73 · IMPLEMENTED: 8 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 8 (7 credential/infra integrations + the release gate's final live-provider drill)
 
 ## BLOCKED_EXTERNAL — unblock conditions
 1. **Live AI providers** — set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (server env). All orchestration, failover, and emergency paths are built and tested against the provider interface.

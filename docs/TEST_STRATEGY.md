@@ -15,19 +15,28 @@
    duplicate ingestion, non-participant message attempts, cross-user privacy.
 4. **Global integration** — `tests/integration.test.ts` runs the Master Spec
    §44 sixteen-step chain end to end.
-5. **Smoke** — production build + authenticated render of all 25 routes +
-   export downloads (performed manually via curl; candidates for Playwright).
+5. **Browser E2E** — Playwright + Chromium (`e2e/`, 16 tests, `npm run
+   test:e2e`): isolated seeded database (`prisma/e2e.db`) recreated per run
+   on port 3100; one UI login reused via storageState (respects the login
+   rate limiter); covers the executive golden path end to end (login,
+   briefing + acknowledgement, site visit, infraction, email → link
+   confirmation → corrective draft, meetings, messaging, Chief of Staff
+   with sources, search, export authz).
+6. **Performance** — `scripts/perf.mjs` (rerunnable, exits nonzero on budget
+   failure) against a scratch DB copy on port 3200; evidence in
+   `docs/PERFORMANCE.md`.
 
 ## Running
 ```
-npm test          # vitest, 47 tests, no network required
+npm test          # vitest, 63 tests, no network required
+npm run test:e2e  # Playwright (builds nothing; needs a prior next build)
 npm run build     # production build gate
 ```
 AI-dependent behavior is tested through `MockProvider` — deterministic,
-controllable outage simulation. Live-provider evals require keys
-(BLOCKED_EXTERNAL).
+controllable outage simulation. E2E asserts Emergency-Intelligence-Mode
+output (no keys configured); with live keys the emails/meetings/chief specs
+need AI-mode assertion variants.
 
 ## Gaps / next steps
-- Playwright E2E over the real UI (login → briefing → email upload → draft).
-- Queue-drain worker tests once R8.7 lands.
-- Load/perf pass (Master Spec phase 27) not yet run.
+- Live-provider AI evals + real failover drill (BLOCKED_EXTERNAL on keys).
+- Dedicated tests for the 8 remaining IMPLEMENTED register rows.

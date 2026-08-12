@@ -51,7 +51,9 @@ export async function gatherContext(db: Db, userId: string, question: string) {
   }
 
   // Deadline/contract questions get the live contract watch.
-  if (/\b(contract|renewal|expir|deadline|countdown)\b/i.test(question)) {
+  // Stem match (no trailing word boundary) so plural/derived forms like
+  // "contracts", "renewals", "expiration", "expiring", "deadlines" qualify.
+  if (/\b(contract|renewal|expir|deadline|countdown)/i.test(question)) {
     const watch = await contractWatch(db, userId);
     if (watch.length) {
       blocks.push({
