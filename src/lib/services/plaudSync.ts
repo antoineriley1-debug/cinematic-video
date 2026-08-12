@@ -1,12 +1,27 @@
-// Plaud API sync adapter. Pulls recordings from the Plaud developer API and
-// imports them through the same pipeline as manual imports (analysis,
-// activity, audit — and the same human-confirmation rules for anything
-// sensitive). Already-synced recordings are skipped by external id.
+// DORMANT — Plaud integration deferred by user decision (2026-08-12).
 //
-// The base URL and paths are configurable because Plaud's API surface could
-// not be confirmed from this build environment (egress-blocked): adjust
-// PLAUD_API_BASE / PLAUD_API_LIST_PATH via env if the deployed schema
-// differs. Field mapping below is deliberately tolerant.
+// Per Plaud's official developer docs (docs.plaud.ai, reviewed 2026-08-12),
+// the real "Plaud Embedded" architecture differs from this adapter's
+// original list-and-poll guess:
+//   1. Recordings live on the DEVICE and sync to a MOBILE app via the
+//      Embedded SDK (BLE/WiFi) — there is no cloud "list recordings" API
+//      for third parties. Device binding requires a mobile app.
+//   2. The server-side piece is the TRANSCRIPTION API: exchange client_id +
+//      client_secret (from portal.plaud.ai) for a Partner Token at
+//      POST https://platform-us.plaud.ai/developer/api/oauth/partner/access-token
+//      (HTTP Basic base64(client_id:secret)), mint per-user tokens at
+//      POST .../developer/api/open/partner/users/access-token, then submit
+//      an uploaded audio file's URL for speaker-attributed transcription.
+//
+// The right future integration for this web app: auto-transcribe the audio
+// files users already drag-and-drop into /plaud by calling the
+// Transcription API, filling PlaudRecording.transcript automatically
+// (today the user attaches the transcript manually). Requirements to build:
+// client_id + client_secret, the Transcription API endpoint spec page, and
+// egress/production access to platform-us.plaud.ai.
+//
+// The generic list-sync below is retained only as scaffolding; do not
+// enable it against Plaud — replace with the flow described above.
 import type { Db } from "../db";
 import { audit } from "../audit";
 import { notify } from "../notify";

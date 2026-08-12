@@ -60,10 +60,14 @@ query-level authorization, and audit logging all test-covered.
 - **OpenAI key** (third provider): valid format and wired; this sandbox's
   egress policy blocks api.openai.com — usable in production or after the
   environment owner updates the network policy.
-- **Plaud**: API sync DEFERRED by user decision — replaced with audio
-  drag-and-drop upload (in-app playback, transcript attach unlocks
-  analysis, tested). The tested sync adapter stays dormant in
-  services/plaudSync.ts for later re-enable.
+- **Plaud**: DEFERRED by user decision — audio drag-and-drop upload covers
+  the workflow (in-app playback; transcript attach unlocks analysis).
+  Official docs reviewed: the future server-side integration is Plaud's
+  Transcription API (client_id/client_secret → Partner Token → User Token
+  at platform-us.plaud.ai) to auto-transcribe uploaded audio; device sync
+  itself requires a mobile app (Embedded SDK). Accurate plan recorded in
+  services/plaudSync.ts. To build later: portal.plaud.ai credentials +
+  Transcription API spec page + network access.
 - **Method-B intake**: endpoint built + tested (`/api/intake/email`);
   point Mailgun/CloudMailin/SES at it per DEPLOYMENT.md.
 - **SMTP**: built + tested; activates with SMTP_* env vars.
