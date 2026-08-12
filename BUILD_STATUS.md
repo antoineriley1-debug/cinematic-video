@@ -53,9 +53,19 @@ None open. `npm audit`: 0 vulnerabilities. Rate limiting, login throttling,
 query-level authorization, and audit logging all test-covered.
 
 ## External Blockers (all documented with unblock conditions in the register)
-AI provider keys (also blocks the final release-gate drill) · Method-B email
-intake infrastructure · Plaud API credentials · SMTP delivery · voice
-provider · production TLS/at-rest encryption · production PostgreSQL.
+- **Anthropic key**: received and wired (gitignored .env); authenticates but
+  the account has no API credits — add credits at console.anthropic.com →
+  Plans & Billing to enable live Anthropic inference.
+- **OpenAI key**: received and wired (gitignored .env); this sandbox's
+  egress network policy blocks api.openai.com (proxy CONNECT 403), so it
+  cannot be exercised from this session. Fix: the environment owner updates
+  the network policy in the Claude Code environment settings (allow
+  api.openai.com or all domains); new sessions then reach OpenAI. Production
+  deployments are unaffected.
+- Method-B email intake infrastructure · Plaud API credentials · SMTP
+  delivery · voice provider · production TLS/at-rest encryption ·
+  production PostgreSQL.
+- Keys were shared in chat during setup — rotate both after testing.
 
 ## Release Gate
 **All locally verifiable criteria pass.** The gate formally remains
