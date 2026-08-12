@@ -16,7 +16,7 @@ export class OpenAiProvider implements AiProvider {
         headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         signal: AbortSignal.timeout(8000),
       });
-      return res.ok;
+      return res.ok || res.status === 429;
     } catch {
       return false;
     }

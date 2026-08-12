@@ -13,6 +13,10 @@ export class AnthropicProvider implements AiProvider {
   async healthy(): Promise<boolean> {
     if (!this.configured()) return false;
     try {
+      // The probe is a minimal but fully valid request, so anything other
+      // than success means real requests will fail too (bad key, exhausted
+      // credits, invalid model). 429 still counts as alive — the provider
+      // works, we're just rate-limited.
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: this.headers(),
@@ -23,7 +27,7 @@ export class AnthropicProvider implements AiProvider {
         }),
         signal: AbortSignal.timeout(8000),
       });
-      return res.status < 500 && res.status !== 429;
+      return res.ok || res.status === 429;
     } catch {
       return false;
     }
