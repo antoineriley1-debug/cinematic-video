@@ -474,6 +474,36 @@ export async function uploadPlaudAudioAction(formData: FormData) {
   redirect("/plaud");
 }
 
+export async function transcribePlaudAction(formData: FormData) {
+  const user = await requireUser();
+  const orchestrator = await getOrchestrator(prisma);
+  const { transcribeWithPlaud } = await import("@/lib/services/plaud");
+  const recordingId = str(formData, "recordingId");
+  try {
+    const result = await transcribeWithPlaud(prisma, orchestrator, { recordingId, userId: user.id });
+    if (result.status === "pending") {
+      await notify(prisma, {
+        userId: user.id,
+        type: "SYSTEM",
+        title: "Plaud transcription queued",
+        body: "Plaud accepted the audio and is processing it. Attach the transcript manually if it doesn't arrive, or retry later.",
+        entityType: "PLAUD",
+        entityId: recordingId,
+      });
+    }
+  } catch (err) {
+    await notify(prisma, {
+      userId: user.id,
+      type: "SYSTEM",
+      title: "Plaud transcription failed",
+      body: err instanceof Error ? err.message : String(err),
+      entityType: "PLAUD",
+      entityId: recordingId,
+    });
+  }
+  revalidatePath(`/plaud/${recordingId}`);
+}
+
 export async function attachPlaudTranscriptAction(formData: FormData) {
   const user = await requireUser();
   const orchestrator = await getOrchestrator(prisma);

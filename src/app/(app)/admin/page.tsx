@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAllSettings } from "@/lib/settings";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, btnSecondaryCls, fmtDateTime } from "@/components/ui";
+import { plaudConfigSummary } from "@/lib/services/plaudClient";
 import { updateSettingAction, runHealthCheckAction, processAiQueueAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function AdminPage() {
     prisma.user.findMany({ orderBy: { name: "asc" } }),
   ]);
   const statuses = orchestrator.providerStatuses();
+  const plaudSummary = plaudConfigSummary();
   const actorName = (id: string | null) => users.find((u) => u.id === id)?.name ?? (id ? id.slice(0, 8) : "system");
 
   return (
@@ -123,9 +125,20 @@ export default async function AdminPage() {
             automatic failover across whichever are configured. Keys never reach the browser.
           </li>
           <li>
-            <Badge tone="INFO">DEFERRED</Badge> <strong>Plaud API sync</strong> — deferred by decision; audio
-            drag-and-drop and transcript import cover the workflow today. The dormant, tested adapter
-            (src/lib/services/plaudSync.ts) can be re-enabled later.
+            {plaudSummary.configured ? (
+              <>
+                <Badge tone="POSITIVE">CONFIGURED</Badge> <strong>Plaud Transcription API</strong> — credentials
+                present ({plaudSummary.base}). The &ldquo;Transcribe with Plaud&rdquo; button appears on audio
+                recordings; APP_BASE_URL must be set so Plaud can fetch the signed audio URL.
+              </>
+            ) : (
+              <>
+                <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Plaud Transcription API</strong> — audio
+                drag-and-drop works today; set PLAUD_CLIENT_ID + PLAUD_CLIENT_SECRET (from portal.plaud.ai) and
+                APP_BASE_URL to enable automatic speaker-attributed transcription. Device sync (Embedded SDK)
+                requires a mobile app — deferred.
+              </>
+            )}
           </li>
           <li>
             <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Email intake address (Method B)</strong> — requires

@@ -94,6 +94,46 @@ export async function importPlaudAudio(
   return { recordingId: recording.id, fileId: file.id };
 }
 
+/**
+ * Transcribe an uploaded audio recording via the Plaud Transcription API,
+ * then run the standard analysis pipeline. Requires PLAUD_CLIENT_ID/SECRET
+ * and APP_BASE_URL (Plaud's cloud fetches the audio through a short-lived
+ * signed URL). Returns "pending" untouched if Plaud queues the job.
+ */
+export async function transcribeWithPlaud(
+  db: Db,
+  orchestrator: Orchestrator,
+  opts: { recordingId: string; userId: string; fetchImpl?: typeof fetch },
+) {
+  const { plaudTranscriptionConfigured, transcribeFileUrl } = await import("./plaudClient");
+  const { makeSignedFilePath } = await import("../signedUrl");
+  if (!plaudTranscriptionConfigured()) throw new Error("Plaud is not configured (PLAUD_CLIENT_ID / PLAUD_CLIENT_SECRET).");
+  const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, "");
+  if (!baseUrl) throw new Error("APP_BASE_URL must be set so Plaud's cloud can fetch the audio file.");
+
+  const recording = await db.plaudRecording.findUniqueOrThrow({ where: { id: opts.recordingId } });
+  if (!recording.fileId) throw new Error("This recording has no audio file to transcribe.");
+
+  const fileUrl = `${baseUrl}${makeSignedFilePath(recording.fileId)}`;
+  const result = await transcribeFileUrl({ fileUrl, userId: opts.userId, fetchImpl: opts.fetchImpl });
+  await audit(db, {
+    actorId: opts.userId,
+    action: "PLAUD_TRANSCRIPTION_REQUESTED",
+    entityType: "PLAUD",
+    entityId: recording.id,
+    after: { status: result.status },
+    source: "API",
+  });
+  if (result.status === "completed") {
+    await attachPlaudTranscript(db, orchestrator, {
+      recordingId: recording.id,
+      transcript: result.transcript,
+      userId: opts.userId,
+    });
+  }
+  return result;
+}
+
 /** Attach (or replace) a transcript on an existing recording and analyze it. */
 export async function attachPlaudTranscript(
   db: Db,

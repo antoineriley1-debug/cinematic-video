@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseJson, DirectorFileClassifications } from "@/lib/validate";
+import { plaudTranscriptionConfigured } from "@/lib/services/plaudClient";
 import { Card, PageHeader, EmptyState, ModeBadge, inputCls, btnCls, fmtDate } from "@/components/ui";
-import { addDirectorFileEntryAction, attachPlaudTranscriptAction } from "../../actions";
+import { addDirectorFileEntryAction, attachPlaudTranscriptAction, transcribePlaudAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,19 @@ export default async function PlaudRecordingPage({ params }: { params: Promise<{
       {recording.fileId && (
         <Card title="Recording">
           <audio controls preload="none" src={`/api/files/${recording.fileId}`} className="w-full" />
+        </Card>
+      )}
+
+      {!hasTranscript && recording.fileId && plaudTranscriptionConfigured() && (
+        <Card title="Transcribe automatically with Plaud">
+          <p className="mb-3 text-sm text-slate-600">
+            Send this audio to Plaud&apos;s speech-to-text pipeline (speaker attribution, 100+ languages). The
+            transcript comes back attached and analyzed.
+          </p>
+          <form action={transcribePlaudAction}>
+            <input type="hidden" name="recordingId" value={recording.id} />
+            <button className={btnCls}>Transcribe with Plaud</button>
+          </form>
         </Card>
       )}
 
