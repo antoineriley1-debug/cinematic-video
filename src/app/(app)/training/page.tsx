@@ -1,0 +1,69 @@
+import { requireUser } from "@/lib/auth";
+import { Card, PageHeader } from "@/components/ui";
+
+export const dynamic = "force-dynamic";
+
+const MODULES: { title: string; body: string; href: string }[] = [
+  { title: "Daily Briefing", href: "/briefing", body: "Your day starts here. The briefing greets you with what needs attention, why it matters, and where it came from. Acknowledge items to clear them from your recurring briefing — the records themselves are never deleted, and other executives keep their own view." },
+  { title: "Email Intelligence", href: "/emails", body: "Drag emails in — the system never touches your inbox. Each email is analyzed for intent, urgency, actions, dates, and people, then connected (with your confirmation) to sites, directors, vendors, and contracts. The original is preserved verbatim." },
+  { title: "Email Timeline", href: "/emails", body: "Upload several emails together and Executive OS orders them chronologically into an event timeline: who said what, when, what was decided, and what was committed. Export it when you need a report." },
+  { title: "Site Visit", href: "/sites", body: "Open a site and press Start Site Visit. Capture positives, improvement opportunities, training needs, critical matters, projects, and back-burner items as you walk. Completing the visit files a structured record and a calendar activity." },
+  { title: "Director File", href: "/directors", body: "Every director has one connected file: recognition, coaching, correctives, infractions, training, and performance — each entry with its source. AI can recommend a classification, but only you can file an infraction." },
+  { title: "Corrective Email", href: "/emails", body: "Open any email and choose the Corrective personality: it states the documented issue, the expected standard, the required correction, a completion date, and the follow-up — factually and professionally. Firm, Escalated, Coaching, and nine other styles are available." },
+  { title: "Vendor Intelligence", href: "/vendors", body: "Document vendor performance where it happens. When several sites independently record problems with the same vendor, Executive OS raises a pattern alert with the supporting evidence attached." },
+  { title: "Contract Search", href: "/contracts", body: "Contracts carry their full terms, so you can ask the Chief of Staff \"When can we terminate?\" and get an answer with the source. The renewal watch counts down 90-60-30 days, and your acknowledgements never silence anyone else's alerts." },
+  { title: "Meeting Minutes", href: "/meetings", body: "Upload minutes and Executive OS extracts the summary, decisions, actions with owners, and unresolved matters. Anything uploaded since your last briefing appears in the next one, linked to the original record." },
+  { title: "Notes & Public Notes", href: "/notes", body: "Notes are private by default. Make one public to open it to comments, threaded replies, and @mentions. Your private flags — Follow Up, Important, Review — stay yours alone." },
+  { title: "@Mentions", href: "/notes", body: "Type @Name in any public note, comment, or message and that executive gets an immediate notification linking straight to the source object." },
+  { title: "Messaging", href: "/messages", body: "Direct and group messages with unread indicators. Share a project, contract, or note straight into the conversation so the discussion keeps its context." },
+  { title: "AI Chief of Staff", href: "/chief", body: "Ask what needs your attention, what happened last week, or what a contract requires. Every answer is grounded in your authorized records and cites its sources — if the records don't say, the Chief of Staff says so." },
+  { title: "Plaud", href: "/plaud", body: "Plaud is your recorder; Executive OS is where recordings become intelligence. Import a transcript and it's summarized, mined for decisions and commitments, and connectable to sites, directors, and projects." },
+  { title: "Search", href: "/search", body: "One search box across everything you're authorized to see: sites, directors, vendors, contracts, emails, meetings, notes, actions, and your own activity history." },
+  { title: "Memory", href: "/memory", body: "Commit the context you want your assistant to keep — with provenance. You can inspect, edit, or delete every memory, and AI never writes memory silently." },
+  { title: "Reports", href: "/calendar", body: "Site reports, director histories, vendor reports, meeting reports, email chronologies, activity reports, and your daily briefing all export with source attribution preserved." },
+];
+
+export default async function TrainingPage() {
+  await requireUser();
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <PageHeader title="Training Center" subtitle="Welcome to Crothall Executive OS" />
+
+      <Card title="Welcome to Crothall Executive OS">
+        <div className="space-y-3 text-sm leading-relaxed text-slate-700">
+          <p className="text-base font-medium text-slate-900">I&apos;m here to help you.</p>
+          <p>
+            I&apos;m part of your daily operating environment — not another software system to maintain. My job is to
+            organize your information, surface what matters, preserve context, connect your work, and reduce your
+            administrative burden.
+          </p>
+          <p>
+            Every morning I open with your personal briefing: what needs your attention, why it matters, what should
+            happen next, and where each item came from. During the day, hand me the emails you choose to share, your
+            meeting minutes, and your Plaud recordings — I&apos;ll turn them into connected intelligence across your
+            sites, directors, vendors, and contracts. Nothing lives in a silo: an email about a vendor links to the
+            vendor, the contract, the site, and your briefing.
+          </p>
+          <p>
+            Ask my Chief of Staff anything — the answer always comes from your own records, with sources you can open.
+          </p>
+          <p className="text-xs text-slate-400">
+            Narrated video walkthroughs of the live interface activate when a voice provider is configured
+            (Admin Console → External integrations). The written walkthroughs below cover every major workflow today.
+          </p>
+        </div>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {MODULES.map((m) => (
+          <Card key={m.title} title={m.title}>
+            <p className="text-sm leading-relaxed text-slate-600">{m.body}</p>
+            <a href={m.href} className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline">
+              Try it now →
+            </a>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
