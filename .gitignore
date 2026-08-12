@@ -17,3 +17,4 @@ e2e/.auth/
 playwright-report/
 test-results/
 storage-test/
+prisma/schema.postgres.prisma

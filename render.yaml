@@ -1,0 +1,56 @@
+# One-click deployment blueprint for Render (render.com): a web service with
+# automatic TLS plus a managed PostgreSQL database.
+# In Render: New → Blueprint → connect this repo → select this branch → Apply.
+# After the first deploy, open the service Shell and run:  npm run db:seed
+# then log in with the printed credentials and change passwords.
+services:
+  - type: web
+    name: crothall-executive-os
+    runtime: node
+    plan: starter
+    buildCommand: >-
+      npm ci &&
+      node scripts/make-pg-schema.mjs &&
+      npx prisma generate --schema=prisma/schema.postgres.prisma &&
+      npx prisma db push --schema=prisma/schema.postgres.prisma --accept-data-loss --skip-generate &&
+      npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crothall-executive-os-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_DIR
+        value: /var/data/storage
+      # Set these in the Render dashboard (never commit values):
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PLAUD_API_KEY
+        sync: false
+      - key: EMAIL_INTAKE_TOKEN
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: VOICE_PROVIDER
+        sync: false
+      - key: VOICE_API_KEY
+        sync: false
+    disk:
+      name: storage
+      mountPath: /var/data
+      sizeGB: 10
+
+databases:
+  - name: crothall-executive-os-db
+    plan: basic-256mb

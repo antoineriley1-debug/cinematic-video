@@ -1,4 +1,9 @@
 import type { Db } from "./db";
+import { mailEnabled, sendNotificationEmail } from "./mailer";
+
+// Notification types that also go out by email when SMTP is configured
+// (spec: mentions/attention flags get immediate in-app + optional email).
+const EMAIL_TYPES = new Set(["MENTION", "ATTENTION", "ALERT"]);
 
 export async function notify(
   db: Db,
@@ -11,7 +16,7 @@ export async function notify(
     entityId?: string;
   },
 ) {
-  return db.notification.create({
+  const notification = await db.notification.create({
     data: {
       userId: entry.userId,
       type: entry.type,
@@ -21,6 +26,19 @@ export async function notify(
       entityId: entry.entityId ?? null,
     },
   });
+  if (EMAIL_TYPES.has(entry.type) && mailEnabled()) {
+    const user = await db.user.findUnique({ where: { id: entry.userId } });
+    if (user?.email) {
+      const base = process.env.APP_BASE_URL?.replace(/\/$/, "");
+      await sendNotificationEmail(db, {
+        to: user.email,
+        title: entry.title,
+        body: entry.body,
+        href: base ? `${base}/notifications` : undefined,
+      });
+    }
+  }
+  return notification;
 }
 
 /** Parse @mentions (@FirstName or @First.Last or @email-local-part) from text. */

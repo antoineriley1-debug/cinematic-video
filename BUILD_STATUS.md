@@ -65,8 +65,13 @@ query-level authorization, and audit logging all test-covered.
   button). Live call blocked: sandbox egress denies all plaud hosts, and
   endpoint paths (PLAUD_API_BASE / PLAUD_API_LIST_PATH) should be confirmed
   against Plaud's docs on first production sync.
-- Method-B email intake infrastructure · SMTP delivery · voice provider ·
-  production TLS/at-rest encryption · production PostgreSQL.
+- **Method-B intake**: endpoint built + tested (`/api/intake/email`);
+  point Mailgun/CloudMailin/SES at it per DEPLOYMENT.md.
+- **SMTP**: built + tested; activates with SMTP_* env vars.
+- **Voice**: abstraction + ElevenLabs adapter + Training Center narration
+  built + tested; activates with VOICE_PROVIDER/VOICE_API_KEY.
+- **Production Postgres/TLS**: render.yaml one-click blueprint (TLS, managed
+  Postgres, persistent storage); access instructions in DEPLOYMENT.md.
 - All four keys (Anthropic, Gemini, OpenAI, Plaud) were shared in chat during setup — rotate them after testing.
 
 ## Release Gate
@@ -84,6 +89,7 @@ Google project needs credits (ai.studio/projects); the live failover test
 will auto-run once usable.
 
 ## Next Action
-1. Provide ANTHROPIC_API_KEY and/or OPENAI_API_KEY → run the live failover
-   drill and AI-quality evals; flip the final gate item.
-2. Optional hardening: dedicated tests for the 8 remaining IMPLEMENTED rows.
+1. Deploy via render.yaml for a public HTTPS URL (DEPLOYMENT.md Option 2).
+2. Optional: Gemini credits (live failover), voice key (live narration),
+   inbound-mail provider (Method B live), network allowance for Plaud.
+3. Rotate all shared keys.

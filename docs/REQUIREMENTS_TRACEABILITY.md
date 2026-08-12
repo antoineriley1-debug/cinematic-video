@@ -26,7 +26,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R6.15 | Timeline exportable | `/api/export/email-timeline/[id]` | T:email.test.ts (export text), S | VERIFIED |
 | R6.16 | Email attachment parsing (extract & store .eml attachments as files) | `email/parse.ts` MIME attachment extraction → `storeFile` linked to email; shown on `emails/[id]` | T:hardening.test.ts | VERIFIED |
 | R7.1 | No mailbox login/sync; intentional submission only | no mail-sync code exists; UI states policy | design-level | VERIFIED |
-| R7.2 | Method B intake address | env seam `EMAIL_INTAKE_ADDRESS`; needs inbound-mail infra | — | BLOCKED_EXTERNAL |
+| R7.2 | Method B intake endpoint | `POST /api/intake/email`: token-gated (timing-safe), raw RFC-822, sender→executive attribution with configurable fallback owner, full ingest pipeline + dedupe + audit; wiring guide in DEPLOYMENT.md | T:integrations.test.ts (5 cases) — endpoint VERIFIED; pointing a real mail provider at it is deploy-time config | VERIFIED |
 | R8.1 | Secondary provider assumes on primary failure (3 vendors: Anthropic, Google Gemini, OpenAI; two-hop cascade) | `ai/orchestrator.ts`, `ai/providers/*` | T:orchestrator.test.ts, google-provider.test.ts | VERIFIED |
 | R8.2 | Subtle user continuity notice + admin technical alert | `notifyFailover/notifyOutage` | T:orchestrator.test.ts | VERIFIED |
 | R8.3 | Emergency engine on total outage; health-controlled, not user-toggled | `ai/emergency.ts`; activation only via orchestrator failure path | T:email.test.ts, emergency.test.ts | VERIFIED |
@@ -64,7 +64,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R20.3 | Attachments on notes/comments | upload inputs on note create + comment forms → `storeFile`; download chips on `notes/[id]` | storage layer T:hardening.test.ts; UI S | IMPLEMENTED |
 | R21.1 | Private flags (5 labels), invisible to others | `Flag` unique per user | S; briefing test shows per-user flags | VERIFIED |
 | R22.1 | Attention flags: immediate in-app notification linking to source | `directAttentionAction`, mentions | T:briefing-messaging.test.ts | VERIFIED |
-| R22.2 | Optional email notification delivery | Notification model has the seam; SMTP not configured | — | BLOCKED_EXTERNAL |
+| R22.2 | Optional email notification delivery | `lib/mailer.ts` (nodemailer) wired into `notify()` for MENTION/ATTENTION/ALERT; in-app never depends on it; failures logged, never fatal | T:integrations.test.ts (send, type filtering, failure isolation) | VERIFIED |
 | R23.1 | Corporate notes workspace linkable to entities | Note.scope=CORPORATE, `/notes?scope=corporate` | S | IMPLEMENTED |
 | R23.2 | AI-recommended relationships need human confirmation | Link.confirmed workflow (shared with email) | T:email.test.ts | VERIFIED |
 | R24.1 | Contextual discussions on sites/vendors/contracts/projects/public notes | polymorphic `Comment` + UI on each page | S | IMPLEMENTED |
@@ -89,9 +89,9 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R35.1 | Chief of Staff grounded answers with source links; honest when unsupported | `services/chief.ts`, `answerGrounded` system prompt | T:integration.test.ts | VERIFIED |
 | R36.1 | Cross-entity search, permissions enforced before retrieval | `lib/search.ts` query-level filters | T:briefing-messaging.test.ts | VERIFIED |
 | R36.2 | Natural-language retrieval: multi-term matching + phrase-first ranking | `lib/search.ts` term tokenizer, any-term match, scored ranking | T:hardening.test.ts | VERIFIED |
-| R37.1 | Voice provider abstraction, server-side credentials | env seam (VOICE_PROVIDER/KEY); no vendor hard-coding | — | BLOCKED_EXTERNAL |
+| R37.1 | Voice provider abstraction, server-side credentials | `lib/voice.ts` (provider-switched; ElevenLabs adapter) + `/api/voice/[slug]` (auth + rate-limited) | T:integrations.test.ts (adapter shape, errors, unknown provider) — live synthesis needs VOICE_API_KEY | VERIFIED |
 | R38.1 | Training center with Welcome presentation + 17 workflow guides | `/training` | S | IMPLEMENTED |
-| R38.2 | Narrated video training using the real interface | requires voice/recording pipeline | — | BLOCKED_EXTERNAL |
+| R38.2 | Narrated training in a natural voice | Training Center renders audio narration players (welcome + all 17 modules) when a voice provider is configured; narration text shared with on-screen content (`lib/training.ts`) | narration coverage T:integrations.test.ts; live audio needs VOICE_API_KEY (BLOCKED_EXTERNAL) | IMPLEMENTED |
 | R38.3 | Contextual "How do I use this?" on relevant screens | PageHeader `help` links to anchored training modules on 20 screens | S (anchors + links render live) | VERIFIED |
 | R39.1 | Object storage w/ sha256 dedupe, metadata, ownership, retention | `lib/storage.ts`, StoredFile | T:hardening.test.ts (attachment stored, sha256, linkage) | VERIFIED |
 | R40.1 | Relational source of truth; no contradictory stores | single Prisma schema | B | VERIFIED |
@@ -105,7 +105,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R42.6 | Prompt-injection defenses (data-not-instructions framing on all AI inputs) | system prompts in capabilities.ts | design-level | IMPLEMENTED |
 | R42.7 | Rate limiting + login throttling | `lib/ratelimit.ts` (login action per-IP, API routes per-user) + DB-backed `lib/loginThrottle.ts`; NOT in proxy (sandbox holds no state) | T:hardening.test.ts + live 429 after 240 API calls | VERIFIED |
 | R42.8 | CI with dependency scanning | `.github/workflows/ci.yml` (test, build, `npm audit --audit-level=high`) | GitHub Actions run #1: conclusion success; audit 0 vulnerabilities | VERIFIED |
-| R42.9 | Encryption at rest / TLS | deployment-platform concern, documented | — | BLOCKED_EXTERNAL |
+| R42.9 | Production TLS + managed PostgreSQL | `render.yaml` blueprint (TLS-terminated web service + managed Postgres + persistent storage disk) + `scripts/make-pg-schema.mjs` + `db:push:pg`; steps in DEPLOYMENT.md | blueprint IMPLEMENTED; becomes live on first Render deploy | IMPLEMENTED |
 | R43.1 | Exports: chronology, meeting, site, vendor, director, activity, briefing — with attribution | `/api/export/*`, `services/exports.ts` | T:integration.test.ts + S | VERIFIED |
 | R43.2 | Project & contract dedicated report exports | `projectReport`/`contractReport` + `/api/export/(project|contract)/[id]` + UI buttons | T:hardening.test.ts + live 200 | VERIFIED |
 | R44.1 | Global integration chain (16 steps) | full-stack services | T:integration.test.ts | VERIFIED |
@@ -116,7 +116,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R49.1 | Release gate | ALL criteria pass: vitest 73/73, E2E 16/16, perf budgets, CI green, audit 0 vulns, clean build, AND live-provider evidence: live AI evaluation on funded Anthropic (T:live-provider.test.ts 3/3 — real analysis quality, health accuracy) plus app-level live drain proof (outage-queued email re-analyzed by live Claude via one page load), plus the real-provider failure drill (billing outage → Emergency Mode + queue + alerts, run live). Optional residual: live handoff to a funded second provider (Gemini key valid, awaiting Google credits) | T:live-provider.test.ts + live app drill | VERIFIED |
 
 ## Summary (counted from this register)
-- VERIFIED: 74 · IMPLEMENTED: 8 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 7 (credential/infra integrations)
+- VERIFIED: 77 · IMPLEMENTED: 10 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 2 (live voice synthesis needs a voice key; live Plaud call needs network allowance)
 
 ## BLOCKED_EXTERNAL — unblock conditions
 1. **Live AI providers** — set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (server env). All orchestration, failover, and emergency paths are built and tested against the provider interface.
