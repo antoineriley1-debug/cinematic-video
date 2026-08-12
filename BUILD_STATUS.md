@@ -60,10 +60,14 @@ query-level authorization, and audit logging all test-covered.
 - **OpenAI key** (third provider): valid format and wired; this sandbox's
   egress policy blocks api.openai.com — usable in production or after the
   environment owner updates the network policy.
-- Method-B email intake infrastructure · Plaud API credentials · SMTP
-  delivery · voice provider · production TLS/at-rest encryption ·
-  production PostgreSQL.
-- All three keys were shared in chat during setup — rotate them after testing.
+- **Plaud key**: received and wired; full sync adapter built and tested
+  against a stubbed API (list, tolerant field mapping, dedupe, admin Sync
+  button). Live call blocked: sandbox egress denies all plaud hosts, and
+  endpoint paths (PLAUD_API_BASE / PLAUD_API_LIST_PATH) should be confirmed
+  against Plaud's docs on first production sync.
+- Method-B email intake infrastructure · SMTP delivery · voice provider ·
+  production TLS/at-rest encryption · production PostgreSQL.
+- All four keys (Anthropic, Gemini, OpenAI, Plaud) were shared in chat during setup — rotate them after testing.
 
 ## Release Gate
 **PASSED (2026-08-12).** Every criterion has passing evidence, including the

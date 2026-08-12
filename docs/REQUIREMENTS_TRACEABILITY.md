@@ -82,7 +82,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R32.1 | Activity calendar records all meaningful actions; day/week/month reconstruction | `recordActivity` at every mutation, `/calendar` | T:integration.test.ts | VERIFIED |
 | R32.2 | AI uses calendar as context | `chief.ts gatherContext` | T (chief path) | VERIFIED |
 | R33.1 | Plaud manual import → transcript analysis, searchable, connectable | `services/plaud.ts` | S; analysis path shared w/ tested meeting capability | IMPLEMENTED |
-| R33.2 | Plaud API sync | adapter seam documented in plaud.ts | — | BLOCKED_EXTERNAL |
+| R33.2 | Plaud API sync | `services/plaudSync.ts`: list → tolerant mapping → dedupe by externalId → standard import pipeline (analysis/audit/activity); admin Sync button; configurable base/paths | T:plaud-sync.test.ts (5 tests, stubbed API); live call BLOCKED_EXTERNAL — sandbox egress blocks plaud hosts, and endpoint shapes need confirmation against Plaud docs on first production sync | IMPLEMENTED |
 | R33.3 | No auto-discipline from recordings; human confirmation | shared `addToDirectorFile` guard | T:directors.test.ts | VERIFIED |
 | R34.1 | Memory with provenance; inspect/edit/delete own only | `/memory`, ownership guards | S | IMPLEMENTED |
 | R34.2 | AI never silently writes memory | no code path writes MemoryItem from AI | design-level | VERIFIED |

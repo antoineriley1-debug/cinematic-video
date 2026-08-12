@@ -476,6 +476,8 @@ model Meeting {
 
 model PlaudRecording {
   id            String    @id @default(cuid())
+  // Plaud's recording id when imported via API sync — dedupes re-syncs.
+  externalId    String?   @unique
   title         String
   recordedAt    DateTime?
   transcript    String

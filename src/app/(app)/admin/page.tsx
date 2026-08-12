@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { getAllSettings } from "@/lib/settings";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, btnSecondaryCls, fmtDateTime } from "@/components/ui";
-import { updateSettingAction, runHealthCheckAction, processAiQueueAction } from "../actions";
+import { plaudConfigured } from "@/lib/services/plaudSync";
+import { updateSettingAction, runHealthCheckAction, processAiQueueAction, syncPlaudAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,22 @@ export default async function AdminPage() {
             automatic failover across whichever are configured. Keys never reach the browser.
           </li>
           <li>
-            <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Plaud API sync</strong> — manual import works today;
-            API credentials activate direct sync (adapter seam in src/lib/services/plaud.ts).
+            {plaudConfigured() ? (
+              <span className="flex items-center gap-2">
+                <Badge tone="POSITIVE">CONFIGURED</Badge> <strong>Plaud API sync</strong> — key present.
+                <form action={syncPlaudAction}>
+                  <button className={btnSecondaryCls}>Sync recordings from Plaud now</button>
+                </form>
+                <span className="text-xs text-slate-400">
+                  (base URL/paths adjustable via PLAUD_API_BASE / PLAUD_API_LIST_PATH)
+                </span>
+              </span>
+            ) : (
+              <>
+                <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Plaud API sync</strong> — manual import works
+                today; set PLAUD_API_KEY to activate direct sync (src/lib/services/plaudSync.ts).
+              </>
+            )}
           </li>
           <li>
             <Badge tone="ATTENTION">BLOCKED_EXTERNAL</Badge> <strong>Email intake address (Method B)</strong> — requires

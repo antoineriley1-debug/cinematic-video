@@ -11,7 +11,7 @@ import { analyzeMeeting } from "../ai/capabilities";
 export async function importPlaudRecording(
   db: Db,
   orchestrator: Orchestrator,
-  opts: { title: string; recordedAt?: Date; transcript: string; fileId?: string; uploadedById: string },
+  opts: { title: string; recordedAt?: Date; transcript: string; fileId?: string; uploadedById: string; externalId?: string },
 ) {
   const recording = await db.plaudRecording.create({
     data: {
@@ -20,6 +20,7 @@ export async function importPlaudRecording(
       transcript: opts.transcript,
       fileId: opts.fileId ?? null,
       uploadedById: opts.uploadedById,
+      externalId: opts.externalId ?? null,
     },
   });
   // Transcript analysis shares the meeting-analysis capability shape.

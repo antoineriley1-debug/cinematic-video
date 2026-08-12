@@ -601,6 +601,24 @@ export async function processAiQueueAction() {
   revalidatePath("/admin");
 }
 
+export async function syncPlaudAction() {
+  const admin = await requireAdmin();
+  const orchestrator = await getOrchestrator(prisma);
+  const { syncFromPlaud } = await import("@/lib/services/plaudSync");
+  try {
+    await syncFromPlaud(prisma, orchestrator, { userId: admin.id });
+  } catch (err) {
+    await notify(prisma, {
+      userId: admin.id,
+      type: "SYSTEM",
+      title: "Plaud sync failed",
+      body: err instanceof Error ? err.message : String(err),
+    });
+  }
+  revalidatePath("/plaud");
+  revalidatePath("/admin");
+}
+
 // ---------- Dashboard layout ----------
 
 export async function saveDashboardLayoutAction(formData: FormData) {
