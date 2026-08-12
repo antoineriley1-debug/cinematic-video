@@ -1,0 +1,613 @@
+// Crothall Executive OS — authoritative relational data model.
+// SQLite in development; PostgreSQL-compatible (no SQLite-only features
+// beyond the datasource url). Enum-like fields are Strings validated by zod
+// in src/lib/validate.ts because the SQLite connector does not support enums.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identity & access ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  title        String?
+  role         String   @default("EXECUTIVE") // ADMIN | EXECUTIVE
+  passwordHash String
+  voiceProfile String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessions        Session[]
+  siteAssignments SiteAssignment[]
+  notifications   Notification[]
+  memories        MemoryItem[]
+  participants    ConversationParticipant[]
+  messages        ChatMessage[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Admin-configurable settings (infraction thresholds, contract watch window,
+// emergency keywords, retention policy, etc.). value is a JSON string.
+model Setting {
+  key         String   @id
+  value       String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
+// ---------- Audit, activity, notifications ----------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     String? // JSON snapshot
+  after      String? // JSON snapshot
+  source     String? // UI | API | SYSTEM | AI
+  requestId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+}
+
+model ActivityEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String // EMAIL_ANALYZED | NOTE_CREATED | SITE_VISIT | ...
+  summary    String
+  entityType String?
+  entityId   String?
+  occurredAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String // MENTION | ATTENTION | ALERT | MESSAGE | SYSTEM | AI_CONTINUITY
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ---------- EVERYTHING CONNECTS: polymorphic links ----------
+
+model Link {
+  id          String   @id @default(cuid())
+  fromType    String
+  fromId      String
+  toType      String
+  toId        String
+  kind        String? // RELATED | RESPONSIBLE | EVIDENCE | ...
+  confirmed   Boolean  @default(true) // false = AI-suggested, awaiting human confirmation
+  suggestedBy String   @default("USER") // USER | AI | EMERGENCY
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([fromType, fromId, toType, toId])
+  @@index([toType, toId])
+}
+
+// ---------- Files (object storage references) ----------
+
+model StoredFile {
+  id         String   @id @default(cuid())
+  filename   String
+  mimeType   String
+  size       Int
+  sha256     String
+  path       String // key within the storage adapter
+  ownerId    String
+  entityType String?
+  entityId   String?
+  retention  String   @default("STANDARD")
+  createdAt  DateTime @default(now())
+
+  @@index([sha256])
+  @@index([entityType, entityId])
+}
+
+// ---------- Sites / hospitals ----------
+
+model Site {
+  id         String   @id @default(cuid())
+  name       String
+  code       String   @unique
+  location   String?
+  status     String   @default("ACTIVE")
+  kpiSummary String?
+  createdAt  DateTime @default(now())
+
+  directors    Director[]
+  assignments  SiteAssignment[]
+  visits       SiteVisit[]
+  observations SiteObservation[]
+  vendorSites  VendorSite[]
+  contracts    ContractSite[]
+  projects     Project[]
+}
+
+model SiteAssignment {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, siteId])
+}
+
+model SiteVisit {
+  id          String    @id @default(cuid())
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  executiveId String
+  status      String    @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  summary     String?
+
+  observations SiteObservation[]
+}
+
+// Standing site attributes and site-visit observations share one model.
+// category: POSITIVE | IMPROVEMENT | TRAINING | CRITICAL | PROJECT | BACKBURNER
+model SiteObservation {
+  id          String     @id @default(cuid())
+  siteId      String
+  site        Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  visitId     String?
+  visit       SiteVisit? @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  category    String
+  content     String
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  @@index([siteId, category])
+}
+
+// ---------- Directors ----------
+
+model Director {
+  id        String   @id @default(cuid())
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  siteId    String?
+  site      Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  fileEntries DirectorFileEntry[]
+  infractions Infraction[]
+}
+
+// classification: RECOGNITION | GENERAL | COACHING | CORRECTIVE | INFRACTION |
+//                 TRAINING | PERFORMANCE | PROJECT | FOLLOW_UP
+model DirectorFileEntry {
+  id             String   @id @default(cuid())
+  directorId     String
+  director       Director @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  classification String
+  content        String
+  sourceType     String? // EMAIL | NOTE | PLAUD | OBSERVATION | PROJECT | FILE | MANUAL
+  sourceId       String?
+  aiRecommended  Boolean  @default(false)
+  humanConfirmed Boolean  @default(true)
+  visibility     String   @default("PRIVATE") // PRIVATE | SHARED
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  @@index([directorId, classification])
+}
+
+model Infraction {
+  id                 String    @id @default(cuid())
+  directorId         String
+  director           Director  @relation(fields: [directorId], references: [id], onDelete: Cascade)
+  siteId             String?
+  date               DateTime  @default(now())
+  recordedById       String
+  category           String
+  severity           String // LOW | MEDIUM | HIGH | CRITICAL
+  description        String
+  expectedCorrection String?
+  followUpDate       DateTime?
+  status             String    @default("OPEN") // OPEN | IN_REMEDIATION | RESOLVED
+  resolution         String?
+  createdAt          DateTime  @default(now())
+
+  @@index([directorId, date])
+}
+
+// ---------- Vendors & contracts ----------
+
+model Vendor {
+  id           String   @id @default(cuid())
+  name         String
+  category     String?
+  contactsJson String? // [{name, email, phone, role}]
+  createdAt    DateTime @default(now())
+
+  sites       VendorSite[]
+  contracts   Contract[]
+  performance VendorPerformanceRecord[]
+}
+
+model VendorSite {
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  siteId   String
+  site     Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, siteId])
+}
+
+// type: POSITIVE | CONCERN | QUALITY_ISSUE | SERVICE_ISSUE | MISSED_REQUIREMENT |
+//       MISSED_DEADLINE | CONTRACT_CONCERN | ESCALATION | RESOLUTION
+model VendorPerformanceRecord {
+  id          String   @id @default(cuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  siteId      String?
+  type        String
+  content     String
+  visibility  String   @default("PUBLIC") // performance records are shared evidence
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([vendorId, type])
+  @@index([siteId])
+}
+
+model Contract {
+  id             String    @id @default(cuid())
+  title          String
+  vendorId       String?
+  vendor         Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  description    String?
+  terms          String? // full contract text for grounded AI Q&A
+  startDate      DateTime?
+  endDate        DateTime?
+  renewalDate    DateTime?
+  noticeDeadline DateTime?
+  autoRenews     Boolean   @default(false)
+  status         String    @default("ACTIVE") // ACTIVE | EXPIRED | TERMINATED | RENEWED
+  createdAt      DateTime  @default(now())
+
+  sites ContractSite[]
+}
+
+model ContractSite {
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  siteId     String
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([contractId, siteId])
+}
+
+// ---------- Projects, actions, deadlines ----------
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  siteId      String?
+  site        Site?     @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  status      String    @default("ACTIVE") // ACTIVE | ON_HOLD | BACKBURNER | COMPLETED
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+}
+
+// kind: ACTION | DEADLINE | FOLLOW_UP
+model ActionItem {
+  id          String    @id @default(cuid())
+  kind        String    @default("ACTION")
+  title       String
+  details     String?
+  ownerId     String?
+  siteId      String?
+  dueDate     DateTime?
+  status      String    @default("OPEN") // OPEN | DONE | CANCELLED
+  sourceType  String?
+  sourceId    String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([ownerId, status])
+  @@index([dueDate])
+}
+
+// ---------- Notes, comments, flags ----------
+
+model Note {
+  id         String   @id @default(cuid())
+  title      String?
+  content    String
+  visibility String   @default("PRIVATE") // PRIVATE | PUBLIC
+  scope      String   @default("EXECUTIVE") // EXECUTIVE | CORPORATE
+  authorId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([visibility, scope])
+}
+
+// Contextual discussions: comments attach to any major object.
+model Comment {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  authorId   String
+  content    String
+  parentId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// Private per-executive flags: FOLLOW_UP | IMPORTANT | REVIEW | ASK_LATER | PRIORITY
+model Flag {
+  id         String   @id @default(cuid())
+  userId     String
+  entityType String
+  entityId   String
+  label      String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, entityType, entityId, label])
+}
+
+// Per-executive acknowledgement state for briefing items / alerts.
+model Acknowledgement {
+  id       String   @id @default(cuid())
+  userId   String
+  itemType String
+  itemId   String
+  ackAt    DateTime @default(now())
+
+  @@unique([userId, itemType, itemId])
+}
+
+// ---------- Email intelligence ----------
+
+model EmailBatch {
+  id          String   @id @default(cuid())
+  title       String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  emails EmailMessage[]
+}
+
+model EmailMessage {
+  id             String      @id @default(cuid())
+  batchId        String?
+  batch          EmailBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  subject        String?
+  fromAddress    String?
+  fromName       String?
+  toJson         String? // recipients
+  ccJson         String?
+  sentAt         DateTime?
+  rawSource      String // original preserved verbatim
+  bodyText       String?
+  sha256         String      @unique // duplicate detection
+  summary        String?
+  intent         String?
+  urgency        String? // LOW | NORMAL | HIGH | URGENT
+  bulletsJson    String?
+  actionsJson    String?
+  datesJson      String?
+  peopleJson     String?
+  analysisMode   String? // AI | EMERGENCY
+  analysisStatus String      @default("PENDING") // PENDING | ANALYZED | QUEUED
+  uploadedById   String
+  createdAt      DateTime    @default(now())
+
+  drafts EmailDraft[]
+
+  @@index([sentAt])
+}
+
+model EmailDraft {
+  id          String        @id @default(cuid())
+  emailId     String?
+  email       EmailMessage? @relation(fields: [emailId], references: [id], onDelete: SetNull)
+  personality String
+  subject     String?
+  content     String
+  mode        String        @default("AI") // AI | EMERGENCY
+  createdById String
+  createdAt   DateTime      @default(now())
+}
+
+// ---------- Meetings ----------
+
+model Meeting {
+  id             String    @id @default(cuid())
+  title          String
+  heldAt         DateTime?
+  minutesText    String
+  summary        String?
+  decisionsJson  String?
+  actionsJson    String?
+  unresolvedJson String?
+  analysisMode   String?
+  uploadedById   String
+  createdAt      DateTime  @default(now())
+  briefedAt      DateTime? // consumed by next-day briefing rule
+}
+
+// ---------- Plaud recordings ----------
+
+model PlaudRecording {
+  id            String    @id @default(cuid())
+  title         String
+  recordedAt    DateTime?
+  transcript    String
+  speakersJson  String?
+  summary       String?
+  decisionsJson String?
+  actionsJson   String?
+  analysisMode  String?
+  fileId        String?
+  uploadedById  String
+  createdAt     DateTime  @default(now())
+}
+
+// ---------- Executive memory ----------
+
+model MemoryItem {
+  id         String    @id @default(cuid())
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category   String    @default("GENERAL")
+  content    String
+  source     String? // provenance: where this memory came from
+  visibility String    @default("PRIVATE")
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ---------- Messaging ----------
+
+model Conversation {
+  id        String   @id @default(cuid())
+  title     String?
+  isGroup   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  participants ConversationParticipant[]
+  messages     ChatMessage[]
+  briefs       ConversationBrief[]
+}
+
+model ConversationParticipant {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+
+  @@id([conversationId, userId])
+}
+
+model ChatMessage {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  sender           User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content          String
+  fileId           String?
+  sharedEntityType String? // send a project/contract/note/file into a conversation
+  sharedEntityId   String?
+  createdAt        DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model ConversationBrief {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  content        String // structured brief JSON
+  createdAt      DateTime     @default(now())
+}
+
+// ---------- Alerts, briefings, AI ----------
+
+// type: DIRECTOR_PATTERN | VENDOR_PATTERN | INFRACTION_THRESHOLD |
+//       PROVIDER_FAILOVER | PROVIDER_OUTAGE | CONTRACT_WATCH
+model Alert {
+  id           String   @id @default(cuid())
+  type         String
+  title        String
+  body         String?
+  entityType   String?
+  entityId     String?
+  metadataJson String?
+  createdAt    DateTime @default(now())
+
+  @@index([type, createdAt])
+}
+
+model BriefingRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  date        String // YYYY-MM-DD
+  contentJson String
+  generatedAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model ProviderEvent {
+  id        String   @id @default(cuid())
+  provider  String
+  event     String // FAILOVER | OUTAGE | RECOVERED | HEALTH_FAIL
+  detail    String?
+  createdAt DateTime @default(now())
+}
+
+model ChiefThread {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+
+  messages ChiefMessage[]
+}
+
+model ChiefMessage {
+  id          String      @id @default(cuid())
+  threadId    String
+  thread      ChiefThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role        String // user | assistant
+  content     String
+  sourcesJson String? // grounded source links
+  createdAt   DateTime    @default(now())
+}
+
+// Queued AI work when all providers are down — processed on recovery, no data loss.
+model AiQueueItem {
+  id          String    @id @default(cuid())
+  capability  String
+  payloadJson String
+  status      String    @default("QUEUED") // QUEUED | DONE | FAILED
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+}
