@@ -82,7 +82,8 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R32.1 | Activity calendar records all meaningful actions; day/week/month reconstruction | `recordActivity` at every mutation, `/calendar` | T:integration.test.ts | VERIFIED |
 | R32.2 | AI uses calendar as context | `chief.ts gatherContext` | T (chief path) | VERIFIED |
 | R33.1 | Plaud manual import → transcript analysis, searchable, connectable | `services/plaud.ts` | S; analysis path shared w/ tested meeting capability | IMPLEMENTED |
-| R33.2 | Plaud API sync | `services/plaudSync.ts`: list → tolerant mapping → dedupe by externalId → standard import pipeline (analysis/audit/activity); admin Sync button; configurable base/paths | T:plaud-sync.test.ts (5 tests, stubbed API); live call BLOCKED_EXTERNAL — sandbox egress blocks plaud hosts, and endpoint shapes need confirmation against Plaud docs on first production sync | IMPLEMENTED |
+| R33.2 | Plaud API sync | DEFERRED by user decision (2026-08-12): UI/env exposure removed; the tested adapter (`services/plaudSync.ts` + T:plaud-sync.test.ts) stays dormant for later re-enable | dormant, tests still run | IMPLEMENTED |
+| R33.4 | Plaud audio file upload (drag & drop) with in-app playback; transcript attach unlocks analysis | `importPlaudAudio`/`attachPlaudTranscript` in `services/plaud.ts`; dropzone on `/plaud`; inline audio streaming via `/api/files` | T:plaud-audio.test.ts (4 tests: storage+dedupe, validation, transcript→analysis, audit) + live smoke | VERIFIED |
 | R33.3 | No auto-discipline from recordings; human confirmation | shared `addToDirectorFile` guard | T:directors.test.ts | VERIFIED |
 | R34.1 | Memory with provenance; inspect/edit/delete own only | `/memory`, ownership guards | S | IMPLEMENTED |
 | R34.2 | AI never silently writes memory | no code path writes MemoryItem from AI | design-level | VERIFIED |
@@ -116,7 +117,7 @@ Evidence keys: `T:<file>` = automated test, `S` = production-build + authenticat
 | R49.1 | Release gate | ALL criteria pass: vitest 73/73, E2E 16/16, perf budgets, CI green, audit 0 vulns, clean build, AND live-provider evidence: live AI evaluation on funded Anthropic (T:live-provider.test.ts 3/3 — real analysis quality, health accuracy) plus app-level live drain proof (outage-queued email re-analyzed by live Claude via one page load), plus the real-provider failure drill (billing outage → Emergency Mode + queue + alerts, run live). Optional residual: live handoff to a funded second provider (Gemini key valid, awaiting Google credits) | T:live-provider.test.ts + live app drill | VERIFIED |
 
 ## Summary (counted from this register)
-- VERIFIED: 77 · IMPLEMENTED: 10 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 2 (live voice synthesis needs a voice key; live Plaud call needs network allowance)
+- VERIFIED: 78 · IMPLEMENTED: 11 · IN_PROGRESS: 0 · NOT_STARTED: 0 · BLOCKED_EXTERNAL: 1 (live voice synthesis needs a voice key)
 
 ## BLOCKED_EXTERNAL — unblock conditions
 1. **Live AI providers** — set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (server env). All orchestration, failover, and emergency paths are built and tested against the provider interface.

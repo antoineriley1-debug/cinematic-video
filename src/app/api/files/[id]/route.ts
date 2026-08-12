@@ -13,10 +13,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const result = await readFileBuffer(prisma, id);
   if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Audio streams inline so recordings play in-app; everything else downloads.
+  const inline = result.file.mimeType.startsWith("audio/");
   return new NextResponse(new Uint8Array(result.buffer), {
     headers: {
       "content-type": result.file.mimeType,
-      "content-disposition": `attachment; filename="${result.file.filename.replace(/"/g, "")}"`,
+      "content-disposition": `${inline ? "inline" : "attachment"}; filename="${result.file.filename.replace(/"/g, "")}"`,
       "x-content-type-options": "nosniff",
     },
   });

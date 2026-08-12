@@ -60,11 +60,10 @@ query-level authorization, and audit logging all test-covered.
 - **OpenAI key** (third provider): valid format and wired; this sandbox's
   egress policy blocks api.openai.com — usable in production or after the
   environment owner updates the network policy.
-- **Plaud key**: received and wired; full sync adapter built and tested
-  against a stubbed API (list, tolerant field mapping, dedupe, admin Sync
-  button). Live call blocked: sandbox egress denies all plaud hosts, and
-  endpoint paths (PLAUD_API_BASE / PLAUD_API_LIST_PATH) should be confirmed
-  against Plaud's docs on first production sync.
+- **Plaud**: API sync DEFERRED by user decision — replaced with audio
+  drag-and-drop upload (in-app playback, transcript attach unlocks
+  analysis, tested). The tested sync adapter stays dormant in
+  services/plaudSync.ts for later re-enable.
 - **Method-B intake**: endpoint built + tested (`/api/intake/email`);
   point Mailgun/CloudMailin/SES at it per DEPLOYMENT.md.
 - **SMTP**: built + tested; activates with SMTP_* env vars.

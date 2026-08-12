@@ -450,6 +450,45 @@ export async function importPlaudAction(formData: FormData) {
   redirect(`/plaud/${recordingId}`);
 }
 
+export async function uploadPlaudAudioAction(formData: FormData) {
+  const user = await requireUser();
+  const { importPlaudAudio } = await import("@/lib/services/plaud");
+  const maxBytes = await getSetting(prisma, "uploads.maxBytes");
+  const files = formData.getAll("audioFiles").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) return;
+  let lastId = "";
+  for (const file of files.slice(0, 10)) {
+    const { recordingId } = await importPlaudAudio(prisma, {
+      title: opt(formData, "title") || file.name.replace(/\.[^.]+$/, ""),
+      recordedAt: optDate(formData, "recordedAt"),
+      buffer: Buffer.from(await file.arrayBuffer()),
+      filename: file.name,
+      mimeType: file.type || "audio/mpeg",
+      uploadedById: user.id,
+      maxBytes,
+    });
+    lastId = recordingId;
+  }
+  revalidatePath("/plaud");
+  if (files.length === 1) redirect(`/plaud/${lastId}`);
+  redirect("/plaud");
+}
+
+export async function attachPlaudTranscriptAction(formData: FormData) {
+  const user = await requireUser();
+  const orchestrator = await getOrchestrator(prisma);
+  const { attachPlaudTranscript } = await import("@/lib/services/plaud");
+  const recordingId = str(formData, "recordingId");
+  const file = formData.get("file");
+  let transcript = str(formData, "transcript");
+  if (file instanceof File && file.size > 0) {
+    transcript = Buffer.from(await file.arrayBuffer()).toString("utf8");
+  }
+  if (!transcript) return;
+  await attachPlaudTranscript(prisma, orchestrator, { recordingId, transcript, userId: user.id });
+  revalidatePath(`/plaud/${recordingId}`);
+}
+
 // ---------- Memory ----------
 
 export async function commitMemoryAction(formData: FormData) {
@@ -601,23 +640,6 @@ export async function processAiQueueAction() {
   revalidatePath("/admin");
 }
 
-export async function syncPlaudAction() {
-  const admin = await requireAdmin();
-  const orchestrator = await getOrchestrator(prisma);
-  const { syncFromPlaud } = await import("@/lib/services/plaudSync");
-  try {
-    await syncFromPlaud(prisma, orchestrator, { userId: admin.id });
-  } catch (err) {
-    await notify(prisma, {
-      userId: admin.id,
-      type: "SYSTEM",
-      title: "Plaud sync failed",
-      body: err instanceof Error ? err.message : String(err),
-    });
-  }
-  revalidatePath("/plaud");
-  revalidatePath("/admin");
-}
 
 // ---------- Dashboard layout ----------
 

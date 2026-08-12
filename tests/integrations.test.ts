@@ -30,13 +30,13 @@ describe("SMTP email notifications", () => {
   });
 
   it("sends an email copy for MENTION notifications and skips MESSAGE ones", async () => {
-    const sendMail = vi.fn(async () => ({ messageId: "test" }));
+    const sendMail = vi.fn(async (_opts: { to: string; subject: string; text: string }) => ({ messageId: "test" }));
     __setTransportForTests({ sendMail } as unknown as Transporter);
     const user = await makeUser();
 
     await notify(db, { userId: user.id, type: "MENTION", title: "Antoine mentioned you", body: "on a note" });
     expect(sendMail).toHaveBeenCalledTimes(1);
-    const mail = sendMail.mock.calls[0][0] as { to: string; subject: string; text: string };
+    const mail = sendMail.mock.calls[0][0];
     expect(mail.to).toBe(user.email);
     expect(mail.subject).toContain("Antoine mentioned you");
 
