@@ -1,6 +1,7 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
 import { ProviderUnavailableError, probeFailureDetail } from "../types";
+import { keyFor } from "../keys";
 
 // Google Gemini adapter. Server-side only — the key never reaches the browser.
 export class GoogleProvider implements AiProvider {
@@ -8,7 +9,7 @@ export class GoogleProvider implements AiProvider {
   probeDetail?: string;
 
   configured(): boolean {
-    return Boolean(process.env.GEMINI_API_KEY);
+    return Boolean(keyFor("google"));
   }
 
   async healthy(): Promise<boolean> {
@@ -23,7 +24,7 @@ export class GoogleProvider implements AiProvider {
       // provider is usable.
       const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyFor("google")}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -51,7 +52,7 @@ export class GoogleProvider implements AiProvider {
     try {
       const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${keyFor("google")}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },

@@ -4,13 +4,15 @@ import { getAllSettings } from "@/lib/settings";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, btnSecondaryCls, fmtDateTime } from "@/components/ui";
 import { plaudConfigSummary } from "@/lib/services/plaudClient";
-import { updateSettingAction, runHealthCheckAction, processAiQueueAction, resetToMedstarDataAction } from "../actions";
+import { updateSettingAction, runHealthCheckAction, processAiQueueAction, resetToMedstarDataAction, saveProviderKeyAction } from "../actions";
+import { keyFor, keySource, keyFingerprint, type ProviderName } from "@/lib/ai/keys";
 import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ keyResult?: string }> }) {
   await requireAdmin();
+  const { keyResult } = await searchParams;
   const [settings, orchestrator, auditRows, providerEvents, queue, users] = await Promise.all([
     getAllSettings(prisma),
     getOrchestrator(prisma),
@@ -65,6 +67,43 @@ export default async function AdminPage() {
             toggle this mode — it clears automatically when a provider recovers.
           </p>
         )}
+      </Card>
+
+      <Card title="AI provider keys">
+        <p className="text-sm text-slate-600">
+          Paste a key here to set it without redeploying — it is saved, tested, and the result is reported
+          immediately. Keys entered here take precedence over the server environment. Surrounding quotes,
+          spaces, line breaks, and masking dots are stripped automatically. Keys are never displayed again;
+          the fingerprint identifies which key is stored without revealing it.
+        </p>
+        {keyResult && (
+          <p className={`mt-3 rounded-lg p-3 text-sm ${/healthy|cleared/.test(keyResult) ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
+            {keyResult}
+          </p>
+        )}
+        <div className="mt-3 space-y-3">
+          {(["anthropic", "google", "openai"] as ProviderName[]).map((provider) => (
+            <form key={provider} action={saveProviderKeyAction} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="provider" value={provider} />
+              <span className="w-24 text-sm font-medium capitalize">{provider}</span>
+              <input
+                name="key"
+                type="password"
+                autoComplete="off"
+                placeholder={keySource(provider) === "none" ? "Paste API key" : "Paste a new key to replace"}
+                className={`${inputCls} min-w-0 flex-1`}
+              />
+              <button className={btnSecondaryCls}>Save &amp; test</button>
+              <span className="text-xs text-slate-500">
+                source: {keySource(provider)}
+                {keyFor(provider) ? ` · fingerprint ${keyFingerprint(keyFor(provider))}` : ""}
+              </span>
+            </form>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Submitting an empty field clears the app-stored key and falls back to the server environment.
+        </p>
       </Card>
 
       <Card title="Provider events">

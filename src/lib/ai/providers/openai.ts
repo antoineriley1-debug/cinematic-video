@@ -1,13 +1,14 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
 import { ProviderUnavailableError, probeFailureDetail } from "../types";
+import { keyFor } from "../keys";
 
 export class OpenAiProvider implements AiProvider {
   readonly name = "openai";
   probeDetail?: string;
 
   configured(): boolean {
-    return Boolean(process.env.OPENAI_API_KEY);
+    return Boolean(keyFor("openai"));
   }
 
   async healthy(): Promise<boolean> {
@@ -17,7 +18,7 @@ export class OpenAiProvider implements AiProvider {
     }
     try {
       const res = await fetch("https://api.openai.com/v1/models", {
-        headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+        headers: { authorization: `Bearer ${keyFor("openai")}` },
         signal: AbortSignal.timeout(8000),
       });
       if (res.ok || res.status === 429) {
@@ -39,7 +40,7 @@ export class OpenAiProvider implements AiProvider {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          authorization: `Bearer ${keyFor("openai")}`,
         },
         body: JSON.stringify({
           model: process.env.OPENAI_MODEL || "gpt-4o",

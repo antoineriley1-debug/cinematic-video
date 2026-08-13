@@ -1,6 +1,7 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
 import { ProviderUnavailableError, probeFailureDetail } from "../types";
+import { keyFor } from "../keys";
 
 // Server-side only — the key never reaches the browser.
 export class AnthropicProvider implements AiProvider {
@@ -8,7 +9,7 @@ export class AnthropicProvider implements AiProvider {
   probeDetail?: string;
 
   configured(): boolean {
-    return Boolean(process.env.ANTHROPIC_API_KEY);
+    return Boolean(keyFor("anthropic"));
   }
 
   async healthy(): Promise<boolean> {
@@ -71,7 +72,7 @@ export class AnthropicProvider implements AiProvider {
   private headers() {
     return {
       "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "x-api-key": keyFor("anthropic")!,
       "anthropic-version": "2023-06-01",
     };
   }

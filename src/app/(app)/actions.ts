@@ -32,6 +32,7 @@ import { getOrCreateDirectConversation, createGroupConversation, sendMessage, ma
 import { askChief } from "@/lib/services/chief";
 import { deleteProject } from "@/lib/services/projects";
 import { wipeAllData, seedProduction } from "@/lib/services/reset";
+import { setProviderKey, keyFingerprint, type ProviderName } from "@/lib/ai/keys";
 import { draftEmailReply } from "@/lib/ai/capabilities";
 import { drainAiQueue } from "@/lib/services/aiQueue";
 import { storeFile } from "@/lib/storage";
@@ -568,6 +569,33 @@ export async function deleteMemoryAction(formData: FormData) {
   if (memory.ownerId !== user.id) throw new Error("You can only delete your own memory.");
   await prisma.memoryItem.delete({ where: { id } });
   revalidatePath("/memory");
+}
+
+// ---------- Admin: AI provider keys ----------
+
+export async function saveProviderKeyAction(formData: FormData) {
+  const user = await requireAdmin();
+  const provider = str(formData, "provider") as ProviderName;
+  if (!["anthropic", "google", "openai"].includes(provider)) throw new Error("Unknown provider.");
+  const stored = await setProviderKey(prisma, provider, str(formData, "key"), user.id);
+  await audit(prisma, {
+    actorId: user.id,
+    action: stored ? "AI_KEY_UPDATED" : "AI_KEY_CLEARED",
+    entityType: "SYSTEM",
+    entityId: `ai.key.${provider}`,
+    after: { fingerprint: keyFingerprint(stored) }, // never the key itself
+  });
+  // Probe immediately so the admin sees pass/fail without waiting.
+  const orchestrator = await getOrchestrator(prisma);
+  const statuses = await orchestrator.healthCheckAll();
+  const status = statuses.find((s) => s.name === provider);
+  const result = !stored
+    ? `${provider} key cleared.`
+    : status?.healthy
+      ? `${provider} key saved and verified — provider is healthy.`
+      : `${provider} key saved but the test failed: ${status?.lastError ?? "unknown error"}`;
+  revalidatePath("/admin");
+  redirect(`/admin?keyResult=${encodeURIComponent(result.slice(0, 300))}`);
 }
 
 // ---------- Admin: full data reset ----------

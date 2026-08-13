@@ -7,6 +7,7 @@ import { getSetting } from "../settings";
 import { notify } from "../notify";
 import type { AiProvider, AiRequest, AiResponse } from "./types";
 import { AllProvidersDownError, ProviderUnavailableError } from "./types";
+import { loadProviderKeys } from "./keys";
 
 export type ProviderStatus = {
   name: string;
@@ -57,6 +58,7 @@ export class Orchestrator {
   }
 
   async healthCheckAll(): Promise<ProviderStatus[]> {
+    await loadProviderKeys(this.db); // pick up keys saved in the admin console
     for (const p of this.providers) {
       const ok = await p.healthy();
       const prev = this.status.get(p.name);
@@ -84,6 +86,7 @@ export class Orchestrator {
    * nothing is available so callers can drop to the deterministic engine.
    */
   async complete(req: AiRequest, opts?: { userId?: string }): Promise<AiResponse> {
+    await loadProviderKeys(this.db);
     const ordered = await this.orderedProvidersAsync();
     const configured = ordered.filter((p) => p.configured());
     let lastErr: unknown = null;
@@ -196,6 +199,7 @@ export async function getOrchestrator(db: Db): Promise<Orchestrator> {
   const { AnthropicProvider } = await import("./providers/anthropic");
   const { OpenAiProvider } = await import("./providers/openai");
   const { GoogleProvider } = await import("./providers/google");
+  await loadProviderKeys(db);
   _orchestrator = new Orchestrator(db, [new AnthropicProvider(), new GoogleProvider(), new OpenAiProvider()]);
   return _orchestrator;
 }
