@@ -1,23 +1,33 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
-import { ProviderUnavailableError } from "../types";
+import { ProviderUnavailableError, probeFailureDetail } from "../types";
 
 export class OpenAiProvider implements AiProvider {
   readonly name = "openai";
+  probeDetail?: string;
 
   configured(): boolean {
     return Boolean(process.env.OPENAI_API_KEY);
   }
 
   async healthy(): Promise<boolean> {
-    if (!this.configured()) return false;
+    if (!this.configured()) {
+      this.probeDetail = "no API key configured";
+      return false;
+    }
     try {
       const res = await fetch("https://api.openai.com/v1/models", {
         headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         signal: AbortSignal.timeout(8000),
       });
-      return res.ok || res.status === 429;
-    } catch {
+      if (res.ok || res.status === 429) {
+        this.probeDetail = undefined;
+        return true;
+      }
+      this.probeDetail = probeFailureDetail(res.status, await res.text());
+      return false;
+    } catch (err) {
+      this.probeDetail = `network: ${err instanceof Error ? err.message : String(err)}`;
       return false;
     }
   }

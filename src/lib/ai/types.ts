@@ -30,7 +30,21 @@ export interface AiProvider {
   configured(): boolean;
   /** Cheap health probe; must not throw. */
   healthy(): Promise<boolean>;
+  /** Why the last healthy() probe failed (HTTP status + provider message). */
+  probeDetail?: string;
   complete(req: AiRequest): Promise<AiResponse>;
+}
+
+/** Compress a provider error body to its human-readable message. */
+export function probeFailureDetail(status: number, body: string): string {
+  let message = body.slice(0, 300);
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string; type?: string; status?: string } };
+    if (parsed.error?.message) message = [parsed.error.type ?? parsed.error.status, parsed.error.message].filter(Boolean).join(" — ");
+  } catch {
+    // not JSON — keep the raw snippet
+  }
+  return `HTTP ${status}: ${message}`.slice(0, 400);
 }
 
 export class ProviderUnavailableError extends Error {

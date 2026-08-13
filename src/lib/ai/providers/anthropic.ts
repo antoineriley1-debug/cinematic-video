@@ -1,17 +1,21 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
-import { ProviderUnavailableError } from "../types";
+import { ProviderUnavailableError, probeFailureDetail } from "../types";
 
 // Server-side only — the key never reaches the browser.
 export class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
+  probeDetail?: string;
 
   configured(): boolean {
     return Boolean(process.env.ANTHROPIC_API_KEY);
   }
 
   async healthy(): Promise<boolean> {
-    if (!this.configured()) return false;
+    if (!this.configured()) {
+      this.probeDetail = "no API key configured";
+      return false;
+    }
     try {
       // The probe is a minimal but fully valid request, so anything other
       // than success means real requests will fail too (bad key, exhausted
@@ -27,8 +31,14 @@ export class AnthropicProvider implements AiProvider {
         }),
         signal: AbortSignal.timeout(8000),
       });
-      return res.ok || res.status === 429;
-    } catch {
+      if (res.ok || res.status === 429) {
+        this.probeDetail = undefined;
+        return true;
+      }
+      this.probeDetail = probeFailureDetail(res.status, await res.text());
+      return false;
+    } catch (err) {
+      this.probeDetail = `network: ${err instanceof Error ? err.message : String(err)}`;
       return false;
     }
   }

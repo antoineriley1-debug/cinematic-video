@@ -65,11 +65,11 @@ export class Orchestrator {
         name: p.name,
         configured: p.configured(),
         healthy: ok,
-        lastError: ok ? null : (prev?.lastError ?? "health check failed"),
+        lastError: ok ? null : (p.probeDetail ?? prev?.lastError ?? "health check failed"),
         lastCheckedAt: new Date(),
       });
       if (!ok && prev?.healthy !== false) {
-        await this.db.providerEvent.create({ data: { provider: p.name, event: "HEALTH_FAIL" } });
+        await this.db.providerEvent.create({ data: { provider: p.name, event: "HEALTH_FAIL", detail: p.probeDetail ?? null } });
       }
       if (ok && wasDown) {
         await this.db.providerEvent.create({ data: { provider: p.name, event: "RECOVERED" } });

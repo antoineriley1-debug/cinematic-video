@@ -1,17 +1,21 @@
 import "server-only";
 import type { AiProvider, AiRequest, AiResponse } from "../types";
-import { ProviderUnavailableError } from "../types";
+import { ProviderUnavailableError, probeFailureDetail } from "../types";
 
 // Google Gemini adapter. Server-side only — the key never reaches the browser.
 export class GoogleProvider implements AiProvider {
   readonly name = "google";
+  probeDetail?: string;
 
   configured(): boolean {
     return Boolean(process.env.GEMINI_API_KEY);
   }
 
   async healthy(): Promise<boolean> {
-    if (!this.configured()) return false;
+    if (!this.configured()) {
+      this.probeDetail = "no API key configured";
+      return false;
+    }
     try {
       // Probe with a minimal real completion: the models list returns 200
       // even when the project has no credits, and Google reports depleted
@@ -30,8 +34,14 @@ export class GoogleProvider implements AiProvider {
           signal: AbortSignal.timeout(8000),
         },
       );
-      return res.ok;
-    } catch {
+      if (res.ok) {
+        this.probeDetail = undefined;
+        return true;
+      }
+      this.probeDetail = probeFailureDetail(res.status, await res.text());
+      return false;
+    } catch (err) {
+      this.probeDetail = `network: ${err instanceof Error ? err.message : String(err)}`;
       return false;
     }
   }
