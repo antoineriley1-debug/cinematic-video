@@ -52,7 +52,7 @@ export class OpenAiProvider implements AiProvider {
         }),
         signal: AbortSignal.timeout(60000),
       });
-      if (!res.ok) throw new ProviderUnavailableError(this.name, `HTTP ${res.status}`);
+      if (!res.ok) throw new ProviderUnavailableError(this.name, probeFailureDetail(res.status, await res.text()));
       const data = (await res.json()) as { choices: { message: { content: string } }[] };
       const text = data.choices?.[0]?.message?.content ?? "";
       if (!text) throw new ProviderUnavailableError(this.name, "empty response");

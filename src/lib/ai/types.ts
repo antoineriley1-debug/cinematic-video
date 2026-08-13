@@ -49,7 +49,8 @@ export function probeFailureDetail(status: number, body: string): string {
 
 export class ProviderUnavailableError extends Error {
   constructor(provider: string, cause?: unknown) {
-    super(`AI provider ${provider} unavailable`);
+    const detail = typeof cause === "string" ? cause : cause instanceof Error ? cause.message : undefined;
+    super(`AI provider ${provider} unavailable${detail ? ` (${detail})` : ""}`);
     this.name = "ProviderUnavailableError";
     this.cause = cause;
   }
