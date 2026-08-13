@@ -31,6 +31,7 @@ import { startVisit, addVisitObservation, completeVisit } from "@/lib/services/v
 import { getOrCreateDirectConversation, createGroupConversation, sendMessage, markRead } from "@/lib/services/messaging";
 import { askChief } from "@/lib/services/chief";
 import { deleteProject } from "@/lib/services/projects";
+import { wipeAllData, seedProduction } from "@/lib/services/reset";
 import { draftEmailReply } from "@/lib/ai/capabilities";
 import { drainAiQueue } from "@/lib/services/aiQueue";
 import { storeFile } from "@/lib/storage";
@@ -567,6 +568,25 @@ export async function deleteMemoryAction(formData: FormData) {
   if (memory.ownerId !== user.id) throw new Error("You can only delete your own memory.");
   await prisma.memoryItem.delete({ where: { id } });
   revalidatePath("/memory");
+}
+
+// ---------- Admin: full data reset ----------
+
+export async function resetToMedstarDataAction(formData: FormData) {
+  const user = await requireAdmin();
+  if (str(formData, "confirmPhrase").trim() !== "RESET ALL DATA")
+    throw new Error('Type RESET ALL DATA exactly to confirm the wipe.');
+  const deleted = await wipeAllData(prisma);
+  const { admin } = await seedProduction(prisma);
+  // Audit written after the wipe so the record of the reset survives it.
+  await audit(prisma, {
+    actorId: admin.id,
+    action: "DATA_RESET",
+    entityType: "SYSTEM",
+    entityId: "reset",
+    after: { requestedBy: user.email, rowsDeleted: deleted },
+  });
+  redirect("/login");
 }
 
 // ---------- Messaging ----------

@@ -4,7 +4,8 @@ import { getAllSettings } from "@/lib/settings";
 import { getOrchestrator } from "@/lib/ai/orchestrator";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, btnSecondaryCls, fmtDateTime } from "@/components/ui";
 import { plaudConfigSummary } from "@/lib/services/plaudClient";
-import { updateSettingAction, runHealthCheckAction, processAiQueueAction } from "../actions";
+import { updateSettingAction, runHealthCheckAction, processAiQueueAction, resetToMedstarDataAction } from "../actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -149,6 +150,23 @@ export default async function AdminPage() {
             VOICE_API_KEY to enable natural-voice narration in the Training Center.
           </li>
         </ul>
+      </Card>
+
+      <Card title="Danger zone — reset all data">
+        <p className="text-sm text-slate-600">
+          Deletes <strong>every record</strong> (emails, meetings, notes, projects, users — everything) and reloads
+          the production dataset: the 10 MedStar hospitals with their facilities directors and the admin account.
+          You will be signed out; log back in as <strong>antoine.riley.1@gmail.com</strong>.
+        </p>
+        <form action={resetToMedstarDataAction} className="mt-3 flex gap-3">
+          <input name="confirmPhrase" placeholder="Type RESET ALL DATA to confirm" required className={inputCls} />
+          <ConfirmButton
+            message="This permanently deletes ALL data and reloads the MedStar dataset. There is no undo. Continue?"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            Wipe &amp; load MedStar data
+          </ConfirmButton>
+        </form>
       </Card>
     </div>
   );
