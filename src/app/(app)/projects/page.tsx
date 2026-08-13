@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, fmtDate } from "@/components/ui";
-import { createProjectAction, addCommentAction } from "../actions";
+import { createProjectAction, addCommentAction, deleteProjectAction } from "../actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,18 @@ export default async function ProjectsPage() {
               {p.site?.name ?? "Corporate"} {p.dueDate ? `· due ${fmtDate(p.dueDate)}` : ""}
             </div>
             {p.description && <p className="mt-2 text-sm text-slate-600">{p.description}</p>}
-            <a href={`/api/export/project/${p.id}`} className="mt-1 inline-block text-xs font-medium text-blue-600 hover:underline">Export report →</a>
+            <div className="mt-1 flex items-center gap-3">
+              <a href={`/api/export/project/${p.id}`} className="text-xs font-medium text-blue-600 hover:underline">Export report →</a>
+              <form action={deleteProjectAction}>
+                <input type="hidden" name="id" value={p.id} />
+                <ConfirmButton
+                  message={`Delete project "${p.name}"? Its comments and links go with it. This cannot be undone.`}
+                  className="text-xs font-medium text-red-600 hover:underline"
+                >
+                  Delete
+                </ConfirmButton>
+              </form>
+            </div>
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="space-y-2">
                 {comments.filter((c) => c.entityId === p.id).map((c) => (

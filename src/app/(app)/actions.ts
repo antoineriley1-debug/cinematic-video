@@ -30,6 +30,7 @@ import { importPlaudRecording } from "@/lib/services/plaud";
 import { startVisit, addVisitObservation, completeVisit } from "@/lib/services/visits";
 import { getOrCreateDirectConversation, createGroupConversation, sendMessage, markRead } from "@/lib/services/messaging";
 import { askChief } from "@/lib/services/chief";
+import { deleteProject } from "@/lib/services/projects";
 import { draftEmailReply } from "@/lib/ai/capabilities";
 import { drainAiQueue } from "@/lib/services/aiQueue";
 import { storeFile } from "@/lib/storage";
@@ -328,6 +329,12 @@ export async function createProjectAction(formData: FormData) {
   });
   await recordActivity(prisma, { userId: user.id, type: "PROJECT_UPDATED", summary: `Project created: ${project.name}`, entityType: "PROJECT", entityId: project.id });
   await audit(prisma, { actorId: user.id, action: "PROJECT_CREATED", entityType: "PROJECT", entityId: project.id });
+  revalidatePath("/projects");
+}
+
+export async function deleteProjectAction(formData: FormData) {
+  const user = await requireUser();
+  await deleteProject(prisma, user, str(formData, "id"));
   revalidatePath("/projects");
 }
 
