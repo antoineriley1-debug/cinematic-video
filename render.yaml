@@ -9,7 +9,7 @@ services:
     runtime: node
     plan: starter
     buildCommand: >-
-      npm ci &&
+      npm ci --include=dev &&
       node scripts/make-pg-schema.mjs &&
       npx prisma generate --schema=prisma/schema.postgres.prisma &&
       npx prisma db push --schema=prisma/schema.postgres.prisma --accept-data-loss --skip-generate &&
