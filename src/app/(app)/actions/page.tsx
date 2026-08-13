@@ -2,7 +2,8 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hrefFor } from "@/lib/services/briefing";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, fmtDate, SourceLink } from "@/components/ui";
-import { createActionItemAction, completeActionItemAction } from "../actions";
+import { createActionItemAction, completeActionItemAction, updateActionItemAction, deleteActionItemAction } from "../actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,16 @@ export default async function ActionsPage() {
             })}
           </ul>
         )}
+        {open.length > 0 && (
+          <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+            {open.map((a) => (
+              <details key={a.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <summary className="cursor-pointer text-xs font-medium text-slate-700">Edit: {a.title}</summary>
+                <EditActionForm item={a} sites={sites} />
+              </details>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card title="New action or deadline">
@@ -81,14 +92,68 @@ export default async function ActionsPage() {
         ) : (
           <ul className="space-y-1 text-sm text-slate-500">
             {done.map((a) => (
-              <li key={a.id}>
+              <li key={a.id} className="flex items-center gap-3">
                 <span className="line-through">{a.title}</span>
-                <span className="ml-2 text-xs">{fmtDate(a.completedAt)}</span>
+                <span className="text-xs">{fmtDate(a.completedAt)}</span>
+                <form action={updateActionItemAction}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <input type="hidden" name="title" value={a.title} />
+                  <input type="hidden" name="kind" value={a.kind} />
+                  <input type="hidden" name="details" value={a.details ?? ""} />
+                  <input type="hidden" name="siteId" value={a.siteId ?? ""} />
+                  <input type="hidden" name="dueDate" value={a.dueDate ? a.dueDate.toISOString().slice(0, 10) : ""} />
+                  <input type="hidden" name="status" value="OPEN" />
+                  <button className="text-xs font-medium text-blue-600 hover:underline">Reopen</button>
+                </form>
+                <form action={deleteActionItemAction}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <ConfirmButton message={`Delete "${a.title}"? This cannot be undone.`} className="text-xs font-medium text-red-600 hover:underline">
+                    Delete
+                  </ConfirmButton>
+                </form>
               </li>
             ))}
           </ul>
         )}
       </Card>
     </div>
+  );
+}
+
+type ActionRow = {
+  id: string; title: string; details: string | null; kind: string;
+  siteId: string | null; dueDate: Date | null; status: string;
+};
+
+function EditActionForm({ item, sites }: { item: ActionRow; sites: { id: string; name: string }[] }) {
+  return (
+    <form action={updateActionItemAction} className="mt-3 grid gap-2 md:grid-cols-4">
+      <input type="hidden" name="id" value={item.id} />
+      <input name="title" defaultValue={item.title} required className={`${inputCls} md:col-span-2`} />
+      <select name="kind" defaultValue={item.kind} className={inputCls}>
+        <option value="ACTION">Action</option>
+        <option value="DEADLINE">Deadline</option>
+      </select>
+      <div>
+        <label className="text-xs text-slate-500">Due (blank clears)</label>
+        <input name="dueDate" type="date" defaultValue={item.dueDate ? item.dueDate.toISOString().slice(0, 10) : ""} className={inputCls} />
+      </div>
+      <input name="details" defaultValue={item.details ?? ""} placeholder="Details" className={`${inputCls} md:col-span-2`} />
+      <select name="siteId" defaultValue={item.siteId ?? ""} className={inputCls}>
+        <option value="">No site</option>
+        {sites.map((s) => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
+      <select name="status" defaultValue={item.status} className={inputCls}>
+        <option value="OPEN">Open</option>
+        <option value="DONE">Done</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+      <button className={`${btnCls} md:col-span-3`}>Save changes</button>
+      <ConfirmButton message={`Delete "${item.title}"? This cannot be undone.`} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50" formAction={deleteActionItemAction}>
+        Delete
+      </ConfirmButton>
+    </form>
   );
 }

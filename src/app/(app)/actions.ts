@@ -30,7 +30,8 @@ import { importPlaudRecording } from "@/lib/services/plaud";
 import { startVisit, addVisitObservation, completeVisit } from "@/lib/services/visits";
 import { getOrCreateDirectConversation, createGroupConversation, sendMessage, markRead } from "@/lib/services/messaging";
 import { askChief } from "@/lib/services/chief";
-import { deleteProject } from "@/lib/services/projects";
+import { deleteProject, updateProject } from "@/lib/services/projects";
+import { updateActionItem, deleteActionItem } from "@/lib/services/actionItems";
 import { wipeAllData, seedProduction } from "@/lib/services/reset";
 import { setProviderKey, keyFingerprint, type ProviderName } from "@/lib/ai/keys";
 import { draftEmailReply } from "@/lib/ai/capabilities";
@@ -332,6 +333,46 @@ export async function createProjectAction(formData: FormData) {
   await recordActivity(prisma, { userId: user.id, type: "PROJECT_UPDATED", summary: `Project created: ${project.name}`, entityType: "PROJECT", entityId: project.id });
   await audit(prisma, { actorId: user.id, action: "PROJECT_CREATED", entityType: "PROJECT", entityId: project.id });
   revalidatePath("/projects");
+}
+
+// In an edit form a blank date means "clear it", unlike creation where a
+// blank field simply means "not set".
+const dateOrNull = (fd: FormData, key: string) => optDate(fd, key) ?? null;
+
+export async function updateProjectAction(formData: FormData) {
+  const user = await requireUser();
+  await updateProject(prisma, user, str(formData, "id"), {
+    name: str(formData, "name"),
+    description: str(formData, "description"),
+    siteId: str(formData, "siteId"),
+    status: str(formData, "status"),
+    priority: str(formData, "priority"),
+    dueDate: dateOrNull(formData, "dueDate"),
+  });
+  revalidatePath("/projects");
+}
+
+export async function updateActionItemAction(formData: FormData) {
+  const user = await requireUser();
+  const kind = str(formData, "kind") === "DEADLINE" ? "DEADLINE" : "ACTION";
+  const status = str(formData, "status");
+  await updateActionItem(prisma, user, str(formData, "id"), {
+    title: str(formData, "title"),
+    details: str(formData, "details"),
+    kind,
+    siteId: str(formData, "siteId"),
+    dueDate: dateOrNull(formData, "dueDate"),
+    ...(status === "OPEN" || status === "DONE" || status === "CANCELLED" ? { status } : {}),
+  });
+  revalidatePath("/actions");
+  revalidatePath("/briefing");
+}
+
+export async function deleteActionItemAction(formData: FormData) {
+  const user = await requireUser();
+  await deleteActionItem(prisma, user, str(formData, "id"));
+  revalidatePath("/actions");
+  revalidatePath("/briefing");
 }
 
 export async function deleteProjectAction(formData: FormData) {

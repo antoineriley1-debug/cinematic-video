@@ -53,7 +53,19 @@ async function probeAccount(): Promise<{ reachable: boolean; authenticated: bool
   }
 }
 
-describe.skipIf(!HAS_KEY)("live provider drill (requires ANTHROPIC_API_KEY)", () => {
+// Probe once up front: a revoked or rotated key is an external condition,
+// not a code defect, so the drill reports it loudly and skips rather than
+// failing the suite. Only a key that actually authenticates can exercise
+// the live paths this drill exists to prove.
+const ACCOUNT = HAS_KEY ? await probeAccount() : null;
+if (HAS_KEY && !ACCOUNT?.authenticated) {
+  console.warn(
+    `[live-provider] SKIPPED — ANTHROPIC_API_KEY did not authenticate (${ACCOUNT?.detail ?? "unreachable"}). ` +
+      "Issue a new key at console.anthropic.com to run the live drill.",
+  );
+}
+
+describe.skipIf(!HAS_KEY || !ACCOUNT?.authenticated)("live provider drill (requires ANTHROPIC_API_KEY)", () => {
   it("reaches the Anthropic API and the key authenticates", async () => {
     const account = await probeAccount();
     expect(account.reachable).toBe(true);

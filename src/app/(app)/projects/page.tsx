@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Card, PageHeader, Badge, EmptyState, inputCls, btnCls, fmtDate } from "@/components/ui";
-import { createProjectAction, addCommentAction, deleteProjectAction } from "../actions";
+import { createProjectAction, addCommentAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,37 @@ export default async function ProjectsPage() {
               {p.site?.name ?? "Corporate"} {p.dueDate ? `· due ${fmtDate(p.dueDate)}` : ""}
             </div>
             {p.description && <p className="mt-2 text-sm text-slate-600">{p.description}</p>}
-            <div className="mt-1 flex items-center gap-3">
+            <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <summary className="cursor-pointer text-xs font-medium text-slate-700">Edit project</summary>
+              <form action={updateProjectAction} className="mt-3 grid gap-2 md:grid-cols-2">
+                <input type="hidden" name="id" value={p.id} />
+                <input name="name" defaultValue={p.name} required className={`${inputCls} md:col-span-2`} />
+                <textarea name="description" rows={2} defaultValue={p.description ?? ""} placeholder="Description" className={`${inputCls} md:col-span-2`} />
+                <select name="siteId" defaultValue={p.siteId ?? ""} className={inputCls}>
+                  <option value="">Corporate / no site</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <select name="status" defaultValue={p.status} className={inputCls}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ON_HOLD">On hold</option>
+                  <option value="BACKBURNER">Back burner / radar</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+                <select name="priority" defaultValue={p.priority} className={inputCls}>
+                  <option value="LOW">Low priority</option>
+                  <option value="MEDIUM">Medium priority</option>
+                  <option value="HIGH">High priority</option>
+                </select>
+                <div>
+                  <label className="text-xs text-slate-500">Due date (blank clears)</label>
+                  <input name="dueDate" type="date" defaultValue={p.dueDate ? p.dueDate.toISOString().slice(0, 10) : ""} className={inputCls} />
+                </div>
+                <button className={`${btnCls} md:col-span-2`}>Save changes</button>
+              </form>
+            </details>
+            <div className="mt-2 flex items-center gap-3">
               <a href={`/api/export/project/${p.id}`} className="text-xs font-medium text-blue-600 hover:underline">Export report →</a>
               <form action={deleteProjectAction}>
                 <input type="hidden" name="id" value={p.id} />
