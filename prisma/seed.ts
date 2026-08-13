@@ -1,111 +1,62 @@
-// Development seed: two executives + one admin, ten sites, directors,
-// vendors, contracts, and sample operational data. NOT used in production.
+// PRODUCTION SEED — the real Crothall @ MedStar portfolio.
+// Seeds the admin account and the ten MedStar Health hospitals.
+// Directors are NOT invented here: add your real roster via the Directors
+// page, or give the list to engineering to seed (never fabricate people).
+// Idempotent: safe to run repeatedly, never duplicates.
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "antoine.riley.1@gmail.com";
+const ADMIN_NAME = process.env.SEED_ADMIN_NAME || "Antoine Riley";
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || "ChangeMe-Crothall-2026";
+
+// MedStar Health — the ten hospitals.
+const MEDSTAR_HOSPITALS: { name: string; code: string; location: string }[] = [
+  { name: "MedStar Washington Hospital Center", code: "MWHC", location: "Washington, DC" },
+  { name: "MedStar Georgetown University Hospital", code: "MGUH", location: "Washington, DC" },
+  { name: "MedStar Franklin Square Medical Center", code: "MFSMC", location: "Baltimore, MD" },
+  { name: "MedStar Union Memorial Hospital", code: "MUMH", location: "Baltimore, MD" },
+  { name: "MedStar Good Samaritan Hospital", code: "MGSH", location: "Baltimore, MD" },
+  { name: "MedStar Harbor Hospital", code: "MHH", location: "Baltimore, MD" },
+  { name: "MedStar Montgomery Medical Center", code: "MMMC", location: "Olney, MD" },
+  { name: "MedStar Southern Maryland Hospital Center", code: "MSMHC", location: "Clinton, MD" },
+  { name: "MedStar St. Mary's Hospital", code: "MSMH", location: "Leonardtown, MD" },
+  { name: "MedStar National Rehabilitation Hospital", code: "MNRH", location: "Washington, DC" },
+];
+
 async function main() {
-  const password = await bcrypt.hash("crothall-demo-2026", 12);
-
-  const antoine = await prisma.user.upsert({
-    where: { email: "antoine@crothall-demo.local" },
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  const admin = await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL.toLowerCase() },
     update: {},
-    create: { email: "antoine@crothall-demo.local", name: "Antoine Riley", title: "Regional Vice President", role: "ADMIN", passwordHash: password },
-  });
-  const heather = await prisma.user.upsert({
-    where: { email: "heather@crothall-demo.local" },
-    update: {},
-    create: { email: "heather@crothall-demo.local", name: "Heather Collins", title: "Regional Director of Operations", role: "EXECUTIVE", passwordHash: password },
-  });
-  await prisma.user.upsert({
-    where: { email: "marcus@crothall-demo.local" },
-    update: {},
-    create: { email: "marcus@crothall-demo.local", name: "Marcus Webb", title: "Division President", role: "EXECUTIVE", passwordHash: password },
+    create: {
+      email: ADMIN_EMAIL.toLowerCase(),
+      name: ADMIN_NAME,
+      title: "Regional Vice President",
+      role: "ADMIN",
+      passwordHash,
+    },
   });
 
-  const siteNames = [
-    ["Mercy General Hospital", "MGH"],
-    ["St. Luke's Medical Center", "SLMC"],
-    ["Riverside Regional Hospital", "RRH"],
-    ["Baptist Memorial East", "BME"],
-    ["University Health Sciences Center", "UHSC"],
-    ["Piedmont Community Hospital", "PCH"],
-    ["Northgate Children's Hospital", "NCH"],
-    ["Summit Ridge Medical Center", "SRMC"],
-    ["Lakeview Behavioral Health", "LBH"],
-    ["Carolina Heart Institute", "CHI"],
-  ] as const;
-
-  const sites = [] as { id: string; name: string }[];
-  for (const [name, code] of siteNames) {
+  for (const hospital of MEDSTAR_HOSPITALS) {
     const site = await prisma.site.upsert({
-      where: { code },
-      update: {},
-      create: { name, code, location: "Southeast Region" },
+      where: { code: hospital.code },
+      update: { name: hospital.name, location: hospital.location },
+      create: hospital,
     });
-    sites.push(site);
     await prisma.siteAssignment.upsert({
-      where: { userId_siteId: { userId: antoine.id, siteId: site.id } },
+      where: { userId_siteId: { userId: admin.id, siteId: site.id } },
       update: {},
-      create: { userId: antoine.id, siteId: site.id },
+      create: { userId: admin.id, siteId: site.id },
     });
   }
 
-  const directorNames = ["Jane Delgado", "John Smithers", "Priya Natarajan", "Kevin O'Rourke", "Dana Whitfield", "Luis Herrera", "Tamara Boyd", "Chris Yang", "Angela Pruitt", "Robert Kimball"];
-  for (let i = 0; i < directorNames.length; i++) {
-    const existing = await prisma.director.findFirst({ where: { name: directorNames[i] } });
-    if (!existing) {
-      await prisma.director.create({
-        data: { name: directorNames[i], title: "Director of Environmental Services", siteId: sites[i].id, email: `${directorNames[i].split(" ")[0].toLowerCase()}@crothall-demo.local` },
-      });
-    }
-  }
-
-  const vendorDefs = [
-    { name: "Guardian Fire & Alarm Systems", category: "Life Safety" },
-    { name: "SteriTech Solutions", category: "Sterilization" },
-    { name: "Apex Linen Services", category: "Linen" },
-    { name: "MedWaste Environmental", category: "Waste Management" },
-  ];
-  const vendors = [] as { id: string; name: string }[];
-  for (const v of vendorDefs) {
-    let vendor = await prisma.vendor.findFirst({ where: { name: v.name } });
-    if (!vendor) vendor = await prisma.vendor.create({ data: v });
-    vendors.push(vendor);
-  }
-  for (const site of sites.slice(0, 4)) {
-    await prisma.vendorSite.upsert({
-      where: { vendorId_siteId: { vendorId: vendors[0].id, siteId: site.id } },
-      update: {},
-      create: { vendorId: vendors[0].id, siteId: site.id },
-    });
-  }
-
-  const inNDays = (n: number) => new Date(Date.now() + n * 24 * 3600 * 1000);
-  const contractDefs = [
-    { title: "Fire Alarm Inspection & Monitoring Agreement", vendorId: vendors[0].id, endDate: inNDays(75), noticeDeadline: inNDays(45), terms: "Guardian Fire & Alarm shall perform quarterly inspections of all fire alarm systems. Either party may terminate with 60 days written notice. Renewal must be confirmed in writing no later than 45 days before expiration. Response time for critical alarm failures: 4 hours." },
-    { title: "Linen Supply Master Agreement", vendorId: vendors[2].id, endDate: inNDays(200), renewalDate: inNDays(170), terms: "Apex Linen Services shall deliver processed linen daily. Quality standard: less than 1% reject rate. Pricing reviewed annually. Termination requires 90 days notice." },
-    { title: "Regulated Medical Waste Services", vendorId: vendors[3].id, endDate: inNDays(30), noticeDeadline: inNDays(10), terms: "MedWaste Environmental provides weekly regulated medical waste pickup. Auto-renews for one year unless notice is given 30 days prior to expiration." },
-  ];
-  for (const c of contractDefs) {
-    let contract = await prisma.contract.findFirst({ where: { title: c.title } });
-    if (!contract) {
-      contract = await prisma.contract.create({ data: c });
-      await prisma.contractSite.create({ data: { contractId: contract.id, siteId: sites[0].id } });
-    }
-  }
-
-  const project = await prisma.project.findFirst({ where: { name: "OR Terminal Cleaning Overhaul" } });
-  if (!project) {
-    await prisma.project.create({
-      data: { name: "OR Terminal Cleaning Overhaul", description: "Rebuild the OR terminal cleaning program at Mercy General ahead of Joint Commission survey.", siteId: sites[0].id, priority: "HIGH", createdById: antoine.id, dueDate: inNDays(45) },
-    });
-  }
-
-  console.log("Seed complete.");
-  console.log("Login: antoine@crothall-demo.local / crothall-demo-2026 (admin)");
-  console.log("       heather@crothall-demo.local / crothall-demo-2026");
+  console.log("Seed complete — 10 MedStar hospitals loaded.");
+  console.log(`Admin login: ${ADMIN_EMAIL}`);
+  console.log(`Password:    ${ADMIN_PASSWORD}${process.env.SEED_ADMIN_PASSWORD ? "" : "   <-- CHANGE THIS after first login"}`);
+  console.log("Add your director roster on the Directors page (or provide the list to seed it).");
 }
 
 main().finally(() => prisma.$disconnect());

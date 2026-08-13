@@ -94,3 +94,18 @@ will auto-run once usable.
 2. Optional: Gemini credits (live failover), voice key (live narration),
    inbound-mail provider (Method B live), network allowance for Plaud.
 3. Rotate all shared keys.
+
+## 2026-08-13 production-hardening batch
+- Production seed (`npm run db:seed`) now loads the 10 real MedStar
+  hospitals (WHC, Georgetown, Franklin Square, Union Memorial, Good
+  Samaritan, Harbor, Montgomery, Southern Maryland, St. Mary's, National
+  Rehabilitation) and a single admin account from SEED_ADMIN_* env vars —
+  no fabricated people. The former demo dataset moved to
+  `npm run db:seed:demo` (E2E suite uses it). `scripts/reset-data.mjs
+  --yes-delete-everything` wipes all rows FK-safely for a clean reseed.
+- Server-action body limit raised to 60MB (next.config.ts) — fixes the
+  live "page couldn't load" crash when analyzing dragged email files —
+  and `ingestEmailAction` now fails gracefully to `/emails?error=…` with
+  a visible banner instead of a 500.
+- Timezone: `TZ=America/New_York` set in render.yaml/.env(.example);
+  briefing date keys and calendar day grouping use local dates.

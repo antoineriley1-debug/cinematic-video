@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:pg-schema": "node scripts/make-pg-schema.mjs",
-    "db:push:pg": "node scripts/make-pg-schema.mjs && prisma db push --schema=prisma/schema.postgres.prisma"
+    "db:push:pg": "node scripts/make-pg-schema.mjs && prisma db push --schema=prisma/schema.postgres.prisma",
+    "db:seed:demo": "tsx prisma/seed-demo.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",

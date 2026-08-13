@@ -171,7 +171,7 @@ export async function buildBriefing(db: Db, userId: string, now = new Date()): P
 
   const watch = (await contractWatch(db, userId, now)).filter((w) => !w.acknowledged);
 
-  const date = now.toISOString().slice(0, 10);
+  const date = now.toLocaleDateString("en-CA"); // local-timezone YYYY-MM-DD
   const briefing: Briefing = {
     date,
     greetingName: user.name.split(/\s+/)[0],

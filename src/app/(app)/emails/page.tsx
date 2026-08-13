@@ -6,8 +6,9 @@ import { ingestEmailAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function EmailsPage() {
+export default async function EmailsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requireUser();
+  const { error } = await searchParams;
   const [emails, batches] = await Promise.all([
     prisma.emailMessage.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.emailBatch.findMany({ include: { _count: { select: { emails: true } } }, orderBy: { createdAt: "desc" }, take: 10 }),
@@ -20,6 +21,12 @@ export default async function EmailsPage() {
         help="email-intelligence"
         subtitle="Drag-and-drop or paste emails you choose to submit. Crothall Executive OS never logs into or syncs your corporate inbox."
       />
+
+      {error && (
+        <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          That upload didn&apos;t go through: {error}
+        </p>
+      )}
 
       <Card title="Submit emails">
         <form action={ingestEmailAction} className="space-y-3">

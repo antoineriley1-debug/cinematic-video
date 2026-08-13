@@ -37,7 +37,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      'bash -c "rm -f prisma/e2e.db && npx prisma db push --skip-generate && npm run db:seed && npx next start -p 3100"',
+      'bash -c "rm -f prisma/e2e.db && npx prisma db push --skip-generate && npm run db:seed:demo && npx next start -p 3100"',
     url: "http://localhost:3100/api/health",
     reuseExistingServer: false,
     timeout: 180_000,

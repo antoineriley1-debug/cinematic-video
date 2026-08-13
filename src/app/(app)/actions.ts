@@ -87,30 +87,39 @@ export async function ackContractWatchAction(formData: FormData) {
 export async function ingestEmailAction(formData: FormData) {
   const user = await requireUser();
   const orchestrator = await getOrchestrator(prisma);
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  const pasted = str(formData, "pasted");
-  let batchId = opt(formData, "batchId");
+  let destination = "/emails";
+  let failure: string | null = null;
+  try {
+    const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+    const pasted = str(formData, "pasted");
+    let batchId = opt(formData, "batchId");
 
-  const sources: string[] = [];
-  for (const file of files) sources.push(Buffer.from(await file.arrayBuffer()).toString("utf8"));
-  if (pasted) sources.push(pasted);
-  if (sources.length === 0) return;
+    const sources: string[] = [];
+    for (const file of files) sources.push(Buffer.from(await file.arrayBuffer()).toString("utf8"));
+    if (pasted) sources.push(pasted);
+    if (sources.length === 0) return;
 
-  if (sources.length > 1 && !batchId) {
-    const batch = await prisma.emailBatch.create({
-      data: { title: opt(formData, "batchTitle") ?? `Email batch ${new Date().toLocaleDateString()}`, createdById: user.id },
-    });
-    batchId = batch.id;
-  }
+    if (sources.length > 1 && !batchId) {
+      const batch = await prisma.emailBatch.create({
+        data: { title: opt(formData, "batchTitle") ?? `Email batch ${new Date().toLocaleDateString()}`, createdById: user.id },
+      });
+      batchId = batch.id;
+    }
 
-  let lastId = "";
-  for (const rawSource of sources) {
-    const result = await ingestEmail(prisma, orchestrator, { rawSource, uploadedById: user.id, batchId });
-    lastId = result.emailId;
+    let lastId = "";
+    for (const rawSource of sources) {
+      const result = await ingestEmail(prisma, orchestrator, { rawSource, uploadedById: user.id, batchId });
+      lastId = result.emailId;
+    }
+    destination = batchId ? `/emails/batch/${batchId}` : `/emails/${lastId}`;
+  } catch (err) {
+    // Never leave the user on a dead error page — land back on /emails with
+    // the reason. (redirect() must run outside this catch: it throws.)
+    failure = err instanceof Error ? err.message : "Email analysis failed.";
   }
   revalidatePath("/emails");
-  if (batchId) redirect(`/emails/batch/${batchId}`);
-  redirect(`/emails/${lastId}`);
+  if (failure) redirect(`/emails?error=${encodeURIComponent(failure.slice(0, 200))}`);
+  redirect(destination);
 }
 
 export async function draftReplyAction(formData: FormData) {

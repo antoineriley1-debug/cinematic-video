@@ -17,7 +17,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   const byDay = new Map<string, typeof events>();
   for (const e of events) {
-    const key = e.occurredAt.toISOString().slice(0, 10);
+    const key = e.occurredAt.toLocaleDateString("en-CA"); // local-timezone day
     byDay.set(key, [...(byDay.get(key) ?? []), e]);
   }
 

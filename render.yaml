@@ -25,6 +25,8 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
+      - key: TZ
+        value: America/New_York
       - key: STORAGE_DIR
         value: /var/data/storage
       # Set these in the Render dashboard (never commit values):
