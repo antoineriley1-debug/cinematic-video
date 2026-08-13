@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { login, currentUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { isRateLimited, LIMITS } from "@/lib/ratelimit";
 import { btnCls, inputCls } from "@/components/ui";
 
@@ -8,6 +9,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const user = await currentUser();
   if (user) redirect("/briefing");
   const { error } = await searchParams;
+  // Fresh deployment guard: an unseeded database means every login fails —
+  // say so plainly instead of "invalid password".
+  const userCount = await prisma.user.count();
 
   async function doLogin(formData: FormData) {
     "use server";
@@ -17,7 +21,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const result = await login(email, password);
-    if (!result.ok) redirect("/login?error=1");
+    if (!result.ok) {
+      redirect(result.error?.includes("Too many") ? "/login?error=throttle" : "/login?error=1");
+    }
     redirect("/briefing");
   }
 
@@ -29,9 +35,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Executive OS</h1>
           <p className="mt-2 text-sm text-slate-500">Connected executive operations &amp; intelligence</p>
         </div>
+        {userCount === 0 && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            No user accounts exist yet — the database hasn&apos;t been seeded. On Render, open the service&apos;s
+            <strong> Shell</strong> tab and run <code className="rounded bg-amber-100 px-1">npm run db:seed</code>,
+            then refresh this page.
+          </p>
+        )}
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error === "rate" ? "Too many attempts. Wait a minute and try again." : "Invalid email or password."}
+            {error === "rate"
+              ? "Too many attempts from this device. Wait a minute and try again."
+              : error === "throttle"
+                ? "Too many failed attempts for this account. Wait 15 minutes and try again."
+                : "Invalid email or password."}
           </p>
         )}
         <form action={doLogin} className="space-y-4">
